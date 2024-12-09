@@ -5,6 +5,8 @@ from sklearn.cluster import KMeans
 import math
 from ultralytics import YOLO
 
+#couleur la plus proche v1, ligne, fps, taille image
+
 # Charger le modèle YOLOv8
 model = YOLO("yolov8n.pt")  # Modèle léger pour la détection
 

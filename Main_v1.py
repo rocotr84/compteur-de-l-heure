@@ -2,114 +2,108 @@ import json
 import cv2
 import numpy as np
 from sklearn.cluster import KMeans
-import math
+from math import sqrt
 from ultralytics import YOLO
 
-#couleur la plus proche v1, ligne, fps, taille image
-
 # Charger le modèle YOLOv8
-model = YOLO("yolov8n.pt")  # Modèle léger pour la détection
+model = YOLO("yolo11n.pt")
 
 # Paramètres utilisateur
-output_width = 1280  # Largeur de la sortie
-output_height = 720  # Hauteur de la sortie
-desired_fps = 30     # Nombre de FPS désiré
-
-# Définir la ligne fixe (exemple : ligne horizontale au centre de l'image)
-line_position = 700  # Position verticale de la ligne (pixels)
-line_start = (0, line_position)  # Début de la ligne (x=0)
-line_end = (1280, line_position)  # Fin de la ligne (x=800, largeur de l'image)
+output_width = 1280
+output_height = 720
+desired_fps = 30
+line_position = 700
+line_start = (0, line_position)
+line_end = (1280, line_position)
 
 # Charger les couleurs depuis un fichier JSON
-def load_colors(filename='colors.json'):
+def load_colors_from_json(filename='colors.json'):
     with open(filename, 'r') as json_file:
         return json.load(json_file)
 
-# Fonction pour calculer la distance euclidienne
-def euclidean_distance(rgb1, rgb2):
-    return math.sqrt((rgb1[0] - rgb2[0]) ** 2 + (rgb1[1] - rgb2[1]) ** 2 + (rgb1[2] - rgb2[2]) ** 2)
+# Fonction pour trouver la couleur la plus proche en utilisant la distance euclidienne
+def closest_color(rgb, COLORS):
+    if not isinstance(rgb, tuple) or len(rgb) != 3:
+        raise ValueError("L'entrée RGB doit être un tuple de 3 entiers.")
+    
+    r, g, b = rgb
+    color_diffs = []
+    for color in COLORS:
+        cr, cg, cb = color["rgb"]
+        # Calcul de la différence de couleur en utilisant la distance euclidienne
+        color_diff = sqrt((r - cr)**2 + (g - cg)**2 + (b - cb)**2)
+        color_diffs.append((color_diff, color))
 
-# Fonction pour trouver la couleur la plus proche
-def find_closest_color(input_rgb, color_list):
-    closest_color = None
-    min_distance = float('inf')
-    
-    for color in color_list:
-        distance = euclidean_distance(input_rgb, color["rgb"])
-        if distance < min_distance:
-            min_distance = distance
-            closest_color = color
-    
-    return closest_color
+    # Trouver la couleur la plus proche
+    closest = min(color_diffs, key=lambda x: x[0])
+    return closest[1]
 
 # Fonction pour détecter la couleur dominante
 def get_dominant_color(roi):
-    # Redimensionner pour accélérer le clustering
     roi_small = cv2.resize(roi, (50, 50), interpolation=cv2.INTER_AREA)
     roi_small = roi_small.reshape((-1, 3))
-    
-    # Utiliser KMeans pour trouver la couleur dominante
     kmeans = KMeans(n_clusters=1, random_state=42)
     kmeans.fit(roi_small)
     dominant_color = kmeans.cluster_centers_[0]
     return tuple(map(int, dominant_color))
 
-# Capture vidéo depuis la webcam
-cap = cv2.VideoCapture(1)
+# Vérifie si une boîte croise la ligne fixe
+def is_box_crossing_line(box, line_y):
+    _, y1, _, y2 = box
+    return y1 <= line_y <= y2
+
+# Charger la vidéo
+video_path = "test_tee-shirt.mp4"
+cap = cv2.VideoCapture(video_path)
 if not cap.isOpened():
-    print("Erreur : Impossible d'accéder à la caméra.")
+    print(f"Erreur : Impossible d'ouvrir la vidéo '{video_path}'.")
     exit()
 
-# Appliquer le FPS désiré
 cap.set(cv2.CAP_PROP_FPS, desired_fps)
-
-# Charger la liste des couleurs
-color_list = load_colors('colors.json')
+color_list = load_colors_from_json('colors.json')
 
 while True:
     ret, frame = cap.read()
     if not ret:
-        print("Erreur : Impossible de lire le flux vidéo.")
+        print("Fin de la vidéo ou erreur de lecture.")
         break
 
-    # Redimensionner le frame à la taille de sortie
     frame = cv2.resize(frame, (output_width, output_height), interpolation=cv2.INTER_LINEAR)
 
-    # Détection des objets dans le frame
     results = model(frame, stream=True)
     for result in results:
-        boxes = result.boxes.xyxy  # Coordonnées des boîtes (xmin, ymin, xmax, ymax)
-        confidences = result.boxes.conf  # Confiances
-        class_ids = result.boxes.cls  # IDs des classes
+        boxes = result.boxes.xyxy
+        confidences = result.boxes.conf
+        class_ids = result.boxes.cls
 
         for box, conf, cls_id in zip(boxes, confidences, class_ids):
             if int(cls_id) == 0:  # Classe "person"
                 x1, y1, x2, y2 = map(int, box)
-                
-                # Calcul de la région du t-shirt
-                roi_x1 = int(x1 + (x2 - x1) * 0.30)  # Décalage horizontal de 15%
-                roi_x2 = int(x1 + (x2 - x1) * 0.70)  # Décalage horizontal de 85%
-                roi_y1 = int(y1 + (y2 - y1) * 0.2)   # Décalage vertical de 40%
-                roi_y2 = int(y1 + (y2 - y1) * 0.4)   # Décalage vertical de 70%
 
-                # Vérification des limites
+                # Vérification si la boîte croise la ligne
+                if is_box_crossing_line((x1, y1, x2, y2), line_position):
+                    cv2.putText(frame, "Passage detecte", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+
+                # Calcul de la région du t-shirt
+                roi_x1 = int(x1 + (x2 - x1) * 0.30)
+                roi_x2 = int(x1 + (x2 - x1) * 0.70)
+                roi_y1 = int(y1 + (y2 - y1) * 0.2)
+                roi_y2 = int(y1 + (y2 - y1) * 0.4)
+
                 if roi_x1 < 0 or roi_y1 < 0 or roi_x2 > frame.shape[1] or roi_y2 > frame.shape[0]:
                     continue
-                
+
                 # Extraire le ROI du t-shirt
                 roi_teeshirt = frame[roi_y1:roi_y2, roi_x1:roi_x2]
-                
-                # Dessiner le rectangle pour visualiser le ROI
-                cv2.rectangle(frame, (roi_x1, roi_y1), (roi_x2, roi_y2), (255, 0, 0), 2)  # Rectangle bleu pour le t-shirt
+                cv2.rectangle(frame, (roi_x1, roi_y1), (roi_x2, roi_y2), (255, 0, 0), 2)
 
                 # Obtenir la couleur dominante du t-shirt
                 if roi_teeshirt.size > 0:
                     dominant_color = get_dominant_color(roi_teeshirt)
-                    closest_color = find_closest_color(dominant_color, color_list)
-                    
-                    if closest_color:
-                        color_name = closest_color["name"]
-                        # Afficher le nom de la couleur dominante
+                    closest_color_info = closest_color(dominant_color, color_list)  # Renommé ici
+
+                    if closest_color_info:
+                        color_name = closest_color_info["name"]
                         cv2.putText(frame, color_name, (roi_x1, roi_y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 2)
 
                 # Dessiner la boîte englobante principale (personne)
@@ -119,11 +113,8 @@ while True:
 
     # Dessiner la ligne fixe sur l'image
     cv2.line(frame, line_start, line_end, (0, 0, 255), 2)
-
-    # Afficher le flux vidéo avec les annotations
     cv2.imshow("Detection avec ligne fixe", frame)
 
-    # Quitter avec 'q'
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 

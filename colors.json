@@ -5,78 +5,48 @@
         "rgb": [0, 0, 0]
     },
     {
-        "name": "White",
-        "hex": "#ffffff",
-        "rgb": [255, 255, 255]
-    },
-    {
-        "name": "silver",
-        "hex": "#c0c0c0",
-        "rgb": [192, 192, 192]
-    },
-    {
-        "name": "gray",
-        "hex": "#808080",
-        "rgb": [128, 128, 128]
-    },
-    {
         "name": "white",
-        "hex": "#ffffff",
+        "hex": "#FFFFFF",
         "rgb": [255, 255, 255]
-    },
-    {
-        "name": "maroon",
-        "hex": "#800000",
-        "rgb": [128, 0, 0]
     },
     {
         "name": "red",
-        "hex": "#ff0000",
+        "hex": "#FF0000",
         "rgb": [255, 0, 0]
+    },
+    {
+        "name": "green",
+        "hex": "#00FF00",
+        "rgb": [0, 255, 0]
+    },
+    {
+        "name": "blue",
+        "hex": "#0000FF",
+        "rgb": [0, 0, 255]
+    },
+    {
+        "name": "yellow",
+        "hex": "#FFFF00",
+        "rgb": [255, 255, 0]
+    },
+    {
+        "name": "cyan",
+        "hex": "#00FFFF",
+        "rgb": [0, 255, 255]
+    },
+    {
+        "name": "magenta",
+        "hex": "#FF00FF",
+        "rgb": [255, 0, 255]
+    },
+    {
+        "name": "orange",
+        "hex": "#FFA500",
+        "rgb": [255, 165, 0]
     },
     {
         "name": "purple",
         "hex": "#800080",
         "rgb": [128, 0, 128]
-    },
-    {
-        "name": "fuchsia",
-        "hex": "#ff00ff",
-        "rgb": [255, 0, 255]
-    },
-    {
-        "name": "green",
-        "hex": "#008000",
-        "rgb": [0, 128, 0]
-    },
-    {
-        "name": "lime",
-        "hex": "#00ff00",
-        "rgb": [0, 255, 0]
-    },
-    {
-        "name": "olive",
-        "hex": "#808000",
-        "rgb": [128, 128, 0]
-    },
-    {
-        "name": "yellow",
-        "hex": "#ffff00",
-        "rgb": [255, 255, 0]
-    },
-    {
-        "name": "navy",
-        "hex": "#000080",
-        "rgb": [0, 0, 128]
-    },
-    {
-        "name": "blue",
-        "hex": "#0000ff",
-        "rgb": [0, 0, 255]
-    },
-    {
-        "name": "teal",
-        "hex": "#008080",
-        "rgb": [0, 128, 128]
     }
 ]

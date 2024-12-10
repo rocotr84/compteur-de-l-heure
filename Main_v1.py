@@ -53,7 +53,7 @@ def is_box_crossing_line(box, line_y):
     return y1 <= line_y <= y2
 
 # Charger la vidéo
-video_path = "test_tee-shirt.mp4"
+video_path = "video.mp4"
 cap = cv2.VideoCapture(video_path)
 if not cap.isOpened():
     print(f"Erreur : Impossible d'ouvrir la vidéo '{video_path}'.")

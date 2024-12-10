@@ -10,3 +10,5 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 
 
 pip install ultralytics opencv-python-headless
+
+pip install scikit-learn

@@ -10,10 +10,10 @@ model = YOLO("yolov8n.pt")  # Modèle léger pour la détection
 line_position = 450  # Position verticale de la ligne (pixels)
 line_start = (0, line_position)  # Début de la ligne (x=0)
 line_end = (800, line_position)  # Fin de la ligne (x=800, largeur de l'image)
-
+#test
 # Capture vidéo depuis la webcam
 cap = cv2.VideoCapture(0)
-if not cap.isOpened():
+if not cap.isOpened(): 
     print("Erreur : Impossible d'accéder à la caméra.")
     exit()
 

@@ -4,8 +4,9 @@ Lancer le projet:
 pip install --upgrade pip
 
 # Installer les bibliothèques nécessaires
-pip install numpy opencv-python-headless scikit-learn matplotlib
 
-pip install ultralytics torch torchvision torchaudio
+
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+
 
 pip install ultralytics opencv-python-headless

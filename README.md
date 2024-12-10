@@ -7,3 +7,5 @@ pip install --upgrade pip
 pip install numpy opencv-python-headless scikit-learn matplotlib
 
 pip install ultralytics torch torchvision torchaudio
+
+pip install ultralytics opencv-python-headless

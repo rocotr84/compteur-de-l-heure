@@ -1,31 +1,28 @@
 import cv2
 import numpy as np
-from math import sqrt
+import json
 from ultralytics import YOLO
 
-# Fonction pour trouver la couleur la plus proche avec un seuil de tolérance dans l'espace HSV
+# Fonction pour charger les couleurs depuis le fichier JSON
+def load_colors_from_json(filename='colors_hsv.json'):
+    with open(filename, 'r') as file:
+        return json.load(file)
+
+# Fonction pour trouver la couleur la plus proche dans l'espace HSV
 def closest_color_in_hsv(hsv_color, color_range):
     """Cette fonction détecte la couleur la plus proche dans l'espace HSV"""
     hue, saturation, value = hsv_color
     min_diff = float('inf')
     closest_color = None
 
-    for color_name, (h_min, h_max, s_min, s_max, v_min, v_max) in color_range.items():
+    for color in color_range:
+        h_min, h_max, s_min, s_max, v_min, v_max = color['hsv_range']
         # Vérifier si la couleur se trouve dans la plage HSV définie
         if h_min <= hue <= h_max and s_min <= saturation <= s_max and v_min <= value <= v_max:
-            closest_color = color_name
+            closest_color = color['name']
             break
 
     return closest_color
-
-# Définir les plages de couleurs en HSV pour chaque couleur d'intérêt
-color_range = {
-    'Red': (0, 10, 100, 255, 100, 255),
-    'Green': (35, 85, 50, 255, 50, 255),
-    'Blue': (90, 130, 50, 255, 50, 255),
-    'Yellow': (20, 40, 100, 255, 100, 255),
-    # Ajouter d'autres couleurs si nécessaire
-}
 
 # Charger le modèle YOLOv8 pour la détection des personnes
 model = YOLO("yolo11n.pt")
@@ -38,6 +35,9 @@ cap = cv2.VideoCapture(video_path)
 if not cap.isOpened():
     print(f"Erreur : Impossible d'ouvrir la vidéo '{video_path}'.")
     exit()
+
+# Charger les couleurs depuis le fichier JSON
+color_list = load_colors_from_json('colors.json')
 
 while True:
     ret, frame = cap.read()
@@ -76,11 +76,19 @@ while True:
                 mean_value = np.mean(hsv_roi[:, :, 2])  # Valeur
 
                 # Déterminer la couleur dominante
-                dominant_color = closest_color_in_hsv((mean_hue, mean_saturation, mean_value), color_range)
+                dominant_color = closest_color_in_hsv((mean_hue, mean_saturation, mean_value), color_list)
 
-                # Afficher la couleur dominante sur la vidéo
-                cv2.putText(frame, f"Couleur: {dominant_color}", (roi_x1, roi_y1 - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+                # Affichage de la couleur dominante dans la console pour débogage
+                print(f"Couleur dominante détectée : {dominant_color}")
+
+                # Vérifier que la couleur dominante est bien détectée
+                if dominant_color:
+                    # Utilisation d'une couleur claire pour le texte, par exemple (255, 255, 255) pour blanc
+                    text_color = (255, 255, 255)  # Couleur du texte (blanc)
+                    cv2.putText(frame, f"Couleur: {dominant_color}", (roi_x1, roi_y1 - 10),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.8, text_color, 2)
+                else:
+                    print("Aucune couleur dominante trouvée.")
 
                 # Dessiner la boîte englobante autour de la personne
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)

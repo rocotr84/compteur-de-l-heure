@@ -17,30 +17,19 @@ line_start = (0, line_position)
 line_end = (1280, line_position)
 
 # Charger les couleurs depuis un fichier JSON
-def load_colors_from_json(filename='colors.json'):
+def load_colors_from_json(filename='colors_hsv.json'):
     with open(filename, 'r') as json_file:
         return json.load(json_file)
 
-# Fonction pour trouver la couleur la plus proche en utilisant la distance euclidienne
-def closest_color(rgb, COLORS):
-    if not isinstance(rgb, tuple) or len(rgb) != 3:
-        raise ValueError("L'entrée RGB doit être un tuple de 3 entiers.")
-    
-    r, g, b = rgb
-    color_diffs = []
-    for color in COLORS:
-        cr, cg, cb = color["rgb"]
-        # Calcul de la différence de couleur en utilisant la distance euclidienne
-        color_diff = sqrt((r - cr)**2 + (g - cg)**2 + (b - cb)**2)
-        color_diffs.append((color_diff, color))
+# Fonction pour vérifier si une couleur est dans une plage HSV donnée
+def is_color_in_range(hsv_color, hsv_range):
+    h, s, v = hsv_color
+    h_min, s_min, v_min, h_max, s_max, v_max = hsv_range
+    return h_min <= h <= h_max and s_min <= s <= s_max and v_min <= v <= v_max
 
-    # Trouver la couleur la plus proche
-    closest = min(color_diffs, key=lambda x: x[0])
-    return closest[1]
-
-# Fonction pour détecter la couleur dominante
-def get_dominant_color(roi):
-    roi_small = cv2.resize(roi, (50, 50), interpolation=cv2.INTER_AREA)
+# Fonction pour détecter la couleur dominante dans un ROI
+def get_dominant_color(roi_hsv):
+    roi_small = cv2.resize(roi_hsv, (50, 50), interpolation=cv2.INTER_AREA)
     roi_small = roi_small.reshape((-1, 3))
     kmeans = KMeans(n_clusters=1, random_state=42)
     kmeans.fit(roi_small)
@@ -53,7 +42,7 @@ def is_box_crossing_line(box, line_y):
     return y1 <= line_y <= y2
 
 # Charger la vidéo
-video_path = "test_tee-shirt.mp4"
+video_path = "video.mp4"
 cap = cv2.VideoCapture(video_path)
 if not cap.isOpened():
     print(f"Erreur : Impossible d'ouvrir la vidéo '{video_path}'.")
@@ -69,6 +58,9 @@ while True:
         break
 
     frame = cv2.resize(frame, (output_width, output_height), interpolation=cv2.INTER_LINEAR)
+
+    # Convertir l'image en HSV directement ici
+    frame_hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
     results = model(frame, stream=True)
     for result in results:
@@ -93,17 +85,24 @@ while True:
                 if roi_x1 < 0 or roi_y1 < 0 or roi_x2 > frame.shape[1] or roi_y2 > frame.shape[0]:
                     continue
 
-                # Extraire le ROI du t-shirt
-                roi_teeshirt = frame[roi_y1:roi_y2, roi_x1:roi_x2]
+                # Extraire le ROI du t-shirt dans l'espace HSV
+                roi_teeshirt_hsv = frame_hsv[roi_y1:roi_y2, roi_x1:roi_x2]
                 cv2.rectangle(frame, (roi_x1, roi_y1), (roi_x2, roi_y2), (255, 0, 0), 2)
 
-                # Obtenir la couleur dominante du t-shirt
-                if roi_teeshirt.size > 0:
-                    dominant_color = get_dominant_color(roi_teeshirt)
-                    closest_color_info = closest_color(dominant_color, color_list)  # Renommé ici
+                # Obtenir la couleur dominante du t-shirt en HSV
+                if roi_teeshirt_hsv.size > 0:
+                    dominant_color = get_dominant_color(roi_teeshirt_hsv)
+                    
+                    # Vérifier si la couleur dominante correspond à une couleur dans le fichier JSON
+                    color_name = None
+                    for color in color_list:
+                        hsv_range = color["hsv_range"]  # Plage HSV
+                        if is_color_in_range(dominant_color, hsv_range):
+                            color_name = color["name"]
+                            break
 
-                    if closest_color_info:
-                        color_name = closest_color_info["name"]
+                    if color_name:
+                        print(f"Couleur dominante détectée: {color_name}")
                         cv2.putText(frame, color_name, (roi_x1, roi_y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 2)
 
                 # Dessiner la boîte englobante principale (personne)

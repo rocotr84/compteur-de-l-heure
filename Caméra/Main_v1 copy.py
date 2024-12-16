@@ -6,7 +6,7 @@ import cv2
 import argparse
 from ultralytics import YOLO
 import imutils
-
+ 
 # Argument parser
 ap = argparse.ArgumentParser()
 ap.add_argument("-v", "--video", help="path to the (optional) video file")
@@ -45,6 +45,15 @@ colors = {
 # Charger le modèle YOLO
 model = YOLO("yolo11n.pt")
 
+
+model = YOLO("yolo11n.pt", task="detect")
+
+
+for result in results:
+    print(result.boxes.data)
+    # result.show()  # uncomment to view each result image
+    
+    # reference https://docs.ultralytics.com/modes/predict/ for more information.
 # Charger la vidéo ou la caméra
 if not args.get("video", False):
     video_path = "video.mp4"

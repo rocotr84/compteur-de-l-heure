@@ -27,7 +27,7 @@ def get_dominant_color(roi):
     return tuple(map(int, dominant_color))
 
 # Capture vidéo depuis la webcam
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(1)
 if not cap.isOpened():
     print("Erreur : Impossible d'accéder à la caméra.")
     exit()

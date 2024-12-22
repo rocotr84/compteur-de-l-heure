@@ -1,0 +1,52 @@
+[
+    {
+        "name": "black",
+        "hex": "#000000",
+        "rgb": [0, 0, 0]
+    },
+    {
+        "name": "white",
+        "hex": "#FFFFFF",
+        "rgb": [255, 255, 255]
+    },
+    {
+        "name": "red",
+        "hex": "#FF0000",
+        "rgb": [255, 0, 0]
+    },
+    {
+        "name": "green",
+        "hex": "#00FF00",
+        "rgb": [0, 255, 0]
+    },
+    {
+        "name": "blue",
+        "hex": "#0000FF",
+        "rgb": [0, 0, 255]
+    },
+    {
+        "name": "yellow",
+        "hex": "#FFFF00",
+        "rgb": [255, 255, 0]
+    },
+    {
+        "name": "cyan",
+        "hex": "#00FFFF",
+        "rgb": [0, 255, 255]
+    },
+    {
+        "name": "magenta",
+        "hex": "#FF00FF",
+        "rgb": [255, 0, 255]
+    },
+    {
+        "name": "orange",
+        "hex": "#FFA500",
+        "rgb": [255, 165, 0]
+    },
+    {
+        "name": "purple",
+        "hex": "#800080",
+        "rgb": [128, 0, 128]
+    }
+]

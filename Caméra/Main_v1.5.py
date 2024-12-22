@@ -6,9 +6,20 @@ import numpy as np
 from sklearn.cluster import KMeans
 import math
 from ultralytics import YOLO
+import os
+
+
+
+# Récupérer le chemin du dossier contenant le script
+current_dir = os.path.dirname(__file__)
+# Construire le chemin vers la vidéo dans 'assets'
+video_path = os.path.join(current_dir, "..", "assets", "fixe_line.mp4")
+
+# Construire le chemin vers le modèle dans 'assets'
+modele_path = os.path.join(current_dir, "..", "assets", "yolo11n.pt")
 
 # Charger le modèle YOLOv8
-model = YOLO("yolo11n.pt")
+model = YOLO(modele_path)
 
 # Paramètres utilisateur
 output_width = 1280
@@ -19,7 +30,15 @@ line_start = (0, line_position)
 line_end = (1280, line_position)
 
 # Charger les couleurs depuis un fichier JSON
-def load_colors(filename='colors.json'):
+def load_colors(filename=None):
+    if filename is None:
+        # Construire le chemin par défaut vers assets/colors.json
+        current_dir = os.path.dirname(__file__)
+        filename = os.path.join(current_dir, "..", "assets", "colors.json")
+    
+    if not os.path.exists(filename):
+        raise FileNotFoundError(f"Le fichier {filename} n'existe pas.")
+    
     with open(filename, 'r') as json_file:
         return json.load(json_file)
 
@@ -27,8 +46,11 @@ def load_colors(filename='colors.json'):
 def euclidean_distance(rgb1, rgb2):
     return math.sqrt((rgb1[0] - rgb2[0]) ** 2 + (rgb1[1] - rgb2[1]) ** 2 + (rgb1[2] - rgb2[2]) ** 2)
 
-# Fonction pour trouver la couleur la plus proche
-def find_closest_color(input_rgb, color_list):
+# Fonction pour trouver la couleur la plus proche (en tenant compte du format BGR d'OpenCV)
+def find_closest_color(input_bgr, color_list):
+    # Convertir la couleur BGR en RGB
+    input_rgb = (input_bgr[2], input_bgr[1], input_bgr[0])
+    
     closest_color = None
     min_distance = float('inf')
     for color in color_list:
@@ -52,13 +74,13 @@ def is_box_crossing_line(box, line_y):
     _, y1, _, y2 = box
     return y1 <= line_y <= y2
 
-cap = cv2.VideoCapture(1)
+cap = cv2.VideoCapture(video_path)
 if not cap.isOpened():
     print("Erreur : Impossible d'accéder à la caméra.")
     exit()
 
 cap.set(cv2.CAP_PROP_FPS, desired_fps)
-color_list = load_colors('colors.json')
+color_list = load_colors()
 
 while True:
     ret, frame = cap.read()

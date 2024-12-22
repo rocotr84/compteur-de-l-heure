@@ -14,10 +14,11 @@ video_path = os.path.join(current_dir, "..", "assets", "test_video_2.mp4")
 # Construire le chemin vers le modèle dans 'assets'
 modele_path = os.path.join(current_dir, "..", "assets", "yolo11x.pt")
 
-# Charger le modèle YOLOv8
+# Charger le modèle YOLO
 model = YOLO(modele_path)
 
 # Paramètres utilisateur
+MAX_DISAPPEAR_FRAMES = 30  # Nombre de frames avant de supprimer une personne inactive
 output_width = 1280
 output_height = 720
 desired_fps = 30
@@ -31,17 +32,64 @@ def get_box_center(box):
     x1, y1, x2, y2 = box
     return (int((x1 + x2) / 2), int((y1 + y2) / 2))
 
+def get_limits(color):
+    # HSV Values not RGB
+    colors = {
+        "noir": ((0, 0, 0), (180, 255, 50)),
+        "blanc": ((0, 0, 200), (180, 30, 255)),
+        "rouge_fonce": ((0, 50, 50), (10, 255, 255)),
+        "bleu_fonce": ((100, 50, 50), (130, 255, 120)),
+        "bleu_clair": ((100, 50, 121), (130, 255, 255)),
+        "vert_fonce": ((35, 50, 50), (85, 255, 255)),
+        "rose": ((140, 50, 50), (170, 255, 255)),
+        "jaune": ((20, 100, 100), (40, 255, 255)),
+        "vert_clair": ((40, 50, 50), (80, 255, 255)),
+    }
+
+    color = color.lower()
+    if color in colors:
+        lower_limit, upper_limit = colors[color]
+        lower_limit = np.array(lower_limit, dtype=np.uint8)
+        upper_limit = np.array(upper_limit, dtype=np.uint8)
+        return lower_limit, upper_limit
+    else:
+        return None, None
+
+def detect_color_in_roi(frame, x1, y1, x2, y2, color_list):
+    hsv_image = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    roi_frame = frame[y1:y2, x1:x2]
+
+    color_counts = {color: 0 for color in color_list}
+
+    for color_name in color_list:
+        lower_limit, upper_limit = get_limits(color_name)
+        if lower_limit is not None and upper_limit is not None:
+            mask = cv2.inRange(hsv_image[y1:y2, x1:x2], lower_limit, upper_limit)
+            color_counts[color_name] = cv2.countNonZero(mask)
+
+    detected_color = max(color_counts, key=color_counts.get)
+    return detected_color
+
 # Classe pour suivre les personnes classées
 class Person:
-    def __init__(self, pid, cx, cy):
+    def __init__(self, pid, cx, cy, color=None):
         self.id = pid
         self.tracks = [(cx, cy)]
         self.done = False
         self.dir = None
+        self.last_seen = 0
+        self.color = color
+        self.color_history = []  # Pour suivre les changements de couleur
 
     # Appel : person.update_coords(cx, cy)
-    def update_coords(self, cx, cy):
+    def update_coords(self, cx, cy, color=None):
         self.tracks.append((cx, cy))
+        self.last_seen = 0
+        if color:
+            self.color_history.append(color)
+            if len(self.color_history) >= 3:  # Utiliser les 3 dernières détections pour stabiliser la couleur
+                # Prendre la couleur la plus fréquente des 3 dernières détections
+                self.color = max(set(self.color_history[-3:]), key=self.color_history[-3:].count)
 
     # Appel : last_position = person.get_last_position()
     def get_last_position(self):
@@ -68,7 +116,8 @@ class Person:
 # Initialiser les variables
 persons = []
 next_id = 1
-counter = 0
+counter = defaultdict(int)  # Utiliser un defaultdict pour compter par couleur
+frame_count = 0  # Pour suivre le nombre de frames
 
 # Charger la vidéo
 cap = cv2.VideoCapture(video_path)
@@ -83,6 +132,8 @@ while True:
     if not ret:
         print("Erreur : Impossible de lire le flux vidéo.")
         break
+
+    frame_count += 1  # Incrémenter le compteur de frames
 
     frame = cv2.resize(frame, (output_width, output_height), interpolation=cv2.INTER_LINEAR)
 
@@ -100,32 +151,42 @@ while True:
             if int(cls_id) == 0:  # Classe "person"
                 x1, y1, x2, y2 = map(int, box)
                 center = get_box_center((x1, y1, x2, y2))
+                
+                # Détecter la couleur dans la boîte englobante
+                colors_to_detect = ["noir", "blanc", "rouge_fonce", "bleu_fonce", "bleu_clair", 
+                                  "vert_fonce", "rose", "jaune", "vert_clair"]
+                detected_color = detect_color_in_roi(frame, x1, y1, x2, y2, colors_to_detect)
 
                 # Mise à jour ou ajout des personnes
                 new_person = True
                 for person in persons:
                     if not person.done and abs(center[0] - person.get_last_position()[0]) <= 50 and abs(center[1] - person.get_last_position()[1]) <= 50:
-                        person.update_coords(*center)
+                        person.update_coords(*center, detected_color)
                         if person.check_crossing(line_start, line_end):
-                            counter += 1
+                            counter[person.color] += 1  # Incrémenter le compteur pour cette couleur
                             person.done = True
                         new_person = False
                         break
 
                 if new_person:
-                    persons.append(Person(next_id, *center))
+                    persons.append(Person(next_id, *center, detected_color))
                     next_id += 1
 
-                # Dessiner la boîte englobante principale (personne)
-                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                label = f"ID {person.id if not new_person else next_id - 1}"  # Afficher l'ID
-                cv2.putText(frame, label, (x1, y1 - 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+    # Mettre à jour le compteur last_seen pour toutes les personnes
+    for person in persons:
+        person.last_seen += 1
+
+    # Nettoyer les personnes qui n'ont pas été vues depuis longtemps
+    persons = [p for p in persons if p.last_seen < MAX_DISAPPEAR_FRAMES]
 
     # Dessiner la ligne diagonale sur l'image
     cv2.line(frame, line_start, line_end, (0, 0, 255), 2)
 
-    # Afficher le compteur de passages
-    cv2.putText(frame, f"Compteur: {counter}", (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+    # Afficher le compteur de passages par couleur
+    y_offset = 50
+    for color, count in counter.items():
+        cv2.putText(frame, f"{color}: {count}", (50, y_offset), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+        y_offset += 40
 
     # Afficher le flux vidéo
     cv2.imshow("Detection avec ligne diagonale", frame)

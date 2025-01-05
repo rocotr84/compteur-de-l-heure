@@ -15,6 +15,11 @@ MAX_DISTANCE = 70           # Distance maximale pour l'association des détectio
 MIN_CONFIDENCE = 0.50      # Seuil minimal de confiance pour les détections
 MIN_IOU_THRESHOLD = 0.3    # Seuil minimal pour l'IoU (Intersection over Union)
 
+# Paramètres de pondération des couleurs
+MIN_TIME_BETWEEN_PASSES = 50.0  # Temps minimal entre deux passages de la même couleur (en secondes)
+PENALTY_DURATION = 50.0         # Durée de la pénalité de pondération (en secondes)
+MIN_COLOR_WEIGHT = 0.1         # Poids minimal pour une couleur (même si elle vient de passer)
+
 # Paramètres d'affichage
 output_width = 1280        # Largeur de sortie de la vidéo
 output_height = 720        # Hauteur de sortie de la vidéo
@@ -38,3 +43,8 @@ SAVE_VIDEO = True  # Option pour activer l'enregistrement au lieu de l'affichage
 VIDEO_OUTPUT_PATH = "output.mp4"  # Chemin du fichier de sortie
 VIDEO_FPS = 30  # FPS pour la vidéo de sortie
 VIDEO_CODEC = 'mp4v'  # Codec vidéo (peut aussi être 'XVID' pour .avi)
+
+# Paramètres de détection des couleurs
+MIN_PIXEL_RATIO = 0.15    # Pourcentage minimal de pixels requis dans la ROI (15%)
+MIN_PIXEL_COUNT = 100     # Nombre minimal absolu de pixels pour une couleur
+COLOR_HISTORY_SIZE = 2    # Nombre de frames pour la stabilité temporelle

@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+from color_weighting import ColorWeightManager
 
 class ColorDetector:
     """
@@ -21,6 +22,7 @@ class ColorDetector:
             "jaune": ((20, 100, 100), (40, 255, 255)),
             "vert_clair": ((40, 50, 50), (80, 255, 255))  # Light green
         }
+        self.weight_manager = ColorWeightManager()
 
     def get_dominant_color(self, frame, roi_coords):
         """
@@ -50,9 +52,18 @@ class ColorDetector:
                 mask = cv2.inRange(hsv_roi, lower, upper)
                 color_counts[color_name] = cv2.countNonZero(mask)
 
-            # Retourne la couleur avec le plus de pixels
-            dominant_color = max(color_counts.items(), key=lambda x: x[1])
-            return dominant_color[0] if dominant_color[1] > 0 else "inconnu"
+            # Applique la pondération temporelle
+            weighted_counts = self.weight_manager.get_weighted_color_probabilities(color_counts)
+            
+            # Trouve la couleur dominante avec les scores pondérés
+            dominant_color = max(weighted_counts.items(), key=lambda x: x[1])
+            
+            # Si une couleur est détectée, met à jour son timestamp
+            if dominant_color[1] > 0:
+                self.weight_manager.update_color_timestamp(dominant_color[0])
+                return dominant_color[0]
+                
+            return "inconnu"
 
         except Exception as e:
             print(f"Erreur lors de la détection de couleur: {str(e)}")

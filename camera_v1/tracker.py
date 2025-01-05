@@ -40,9 +40,11 @@ class TrackedPerson:
             self.trajectory.pop(0)
             
     def get_center(self):
-        """Calcule le point central de la boîte englobante"""
-        x1, y1, x2, y2 = self.bbox
-        return (int((x1 + x2) / 2), int((y1 + y2) / 2))
+        """Calcule le point milieu du bas de la bbox de la personne"""
+        x, y, w, h = self.bbox
+        bottom_center_x = x + w // 2
+        bottom_center_y = y + h  # Point le plus bas de la bbox
+        return (bottom_center_x, bottom_center_y)
         
     def check_line_crossing(self, line_start, line_end):
         """

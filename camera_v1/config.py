@@ -19,6 +19,9 @@ MIN_IOU_THRESHOLD = 0.3    # Seuil minimal pour l'IoU (Intersection over Union)
 MIN_TIME_BETWEEN_PASSES = 50.0  # Temps minimal entre deux passages de la même couleur (en secondes)
 PENALTY_DURATION = 50.0         # Durée de la pénalité de pondération (en secondes)
 MIN_COLOR_WEIGHT = 0.1         # Poids minimal pour une couleur (même si elle vient de passer)
+MIN_PIXEL_RATIO = 0.15         # Poids minimal pour une couleur (même si elle vient de passer)
+MIN_PIXEL_COUNT = 100         # Poids minimal pour une couleur (même si elle vient de passer)
+COLOR_HISTORY_SIZE = 2         # Poids minimal pour une couleur (même si elle vient de passer)
 
 # Paramètres d'affichage
 output_width = 1280        # Largeur de sortie de la vidéo
@@ -27,8 +30,8 @@ desired_fps = 60          # Images par seconde souhaitées
 frame_delay = 1           # Délai entre les frames en millisecondes (1 = temps réel, augmentez pour ralentir)
 
 # Points définissant la ligne de comptage
-line_start = (0, output_height - 50)  # Point de début de la ligne (bord gauche, 50px du bas)
-line_end = (output_width, output_height - 50)  # Point de fin de la ligne (bord droit, 50px du bas)
+line_start = (0, output_height - 10)  # Point de début de la ligne (bord gauche, 10px du bas)
+line_end = (output_width, output_height - 10)  # Point de fin de la ligne (bord droit, 10px du bas)
 
 # Ajouter ces nouvelles constantes
 PROCESS_EVERY_N_FRAMES = 1  # Traiter une frame sur deux pour optimiser les performances
@@ -39,12 +42,19 @@ bytetrack_path = "bytetrack.yaml"  # Chemin vers la config ByteTrack q
 SHOW_TRAJECTORIES = False  # Option pour activer/désactiver l'affichage des trajectoires
 
 # Options d'enregistrement vidéo
-SAVE_VIDEO = True  # Option pour activer l'enregistrement au lieu de l'affichage
+SAVE_VIDEO = False  # Option pour activer l'enregistrement au lieu de l'affichage
 VIDEO_OUTPUT_PATH = "output.mp4"  # Chemin du fichier de sortie
 VIDEO_FPS = 30  # FPS pour la vidéo de sortie
 VIDEO_CODEC = 'mp4v'  # Codec vidéo (peut aussi être 'XVID' pour .avi)
 
-# Paramètres de détection des couleurs
-MIN_PIXEL_RATIO = 0.15    # Pourcentage minimal de pixels requis dans la ROI (15%)
-MIN_PIXEL_COUNT = 100     # Nombre minimal absolu de pixels pour une couleur
-COLOR_HISTORY_SIZE = 2    # Nombre de frames pour la stabilité temporelle
+# Configuration du mode de détection
+DETECTION_MODE = "color"  # "color" ou "number"
+
+# Configuration de la détection des couleurs
+COLOR_MIN_PIXEL_RATIO = 0.15
+COLOR_MIN_PIXEL_COUNT = 100
+COLOR_HISTORY_SIZE = 2
+
+# Configuration de la détection des numéros
+NUMBER_MIN_CONFIDENCE = 0.6
+NUMBER_ROI_SCALE = 0.4  # Taille relative de la ROI par rapport à la bbox

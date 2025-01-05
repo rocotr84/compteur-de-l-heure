@@ -53,43 +53,36 @@ def main():
     
     try:
         while True:
-            # Lecture d'une nouvelle frame
             ret, frame = cap.read()
             if not ret:
                 break
                 
-            # Prétraitement de la frame
             frame = video_proc.process_frame(frame)
-            
-            # Mise à jour du tracking
             tracked_persons = tracker.update(frame)
             
-            # Liste des IDs à supprimer après le traitement
-            ids_to_remove = []
+            # Liste des IDs à traiter après la boucle
+            ids_to_process = []
             
-            # Traitement de chaque personne
-            for person_id, person in tracker.persons.items():
+            # Utilisation d'une copie du dictionnaire pour l'itération
+            for person_id, person in list(tracker.persons.items()):
                 # Mise à jour de la couleur
                 if hasattr(person, 'color') and person.color is not None:
                     color_tracker.update_color(person_id, person.color)
                 
                 # Vérification du franchissement de ligne
                 if person.check_line_crossing(line_start, line_end):
+                    ids_to_process.append(person_id)
+            
+            # Traitement des IDs après l'itération
+            for person_id in ids_to_process:
+                if person_id in tracker.persons:  # Vérification supplémentaire
                     print(f"!!! Ligne traversée par ID={person_id} !!!")
-                    # Enregistrement dans le CSV
                     color_tracker.record_crossing(person_id)
-                    # Mise à jour du compteur
                     dominant_color = color_tracker.get_dominant_color(person_id)
                     if dominant_color:
                         tracker.counter[dominant_color] += 1
-                    # Marquer pour suppression
-                    ids_to_remove.append(person_id)
-            
-            # Suppression des personnes ayant traversé la ligne
-            for person_id in ids_to_remove:
-                if person_id in tracker.persons:
-                    del tracker.persons[person_id]
-                    print(f"Personne ID={person_id} supprimée du tracking")
+                    tracker.mark_as_crossed(person_id)
+                    print(f"Personne ID={person_id} marquée comme ayant traversé")
             
             # Affichage
             for person in tracked_persons:

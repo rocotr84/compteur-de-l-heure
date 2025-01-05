@@ -84,6 +84,7 @@ class PersonTracker:
         self.persons = {}  # Dictionnaire des personnes suivies
         self.counter = defaultdict(int)  # Compteur par couleur
         self.model = YOLO(modele_path)  # Ajout du modèle YOLO
+        self.crossed_ids = set()  # Nouveau : ensemble des IDs ayant traversé la ligne
         
     def update(self, frame, confidences=None):
         """
@@ -113,7 +114,12 @@ class PersonTracker:
             # Mettre à jour ou créer les personnes suivies
             current_ids = set()
             for box, track_id in zip(boxes, ids):
-                current_ids.add(int(track_id))
+                track_id = int(track_id)
+                # Ignorer les IDs qui ont déjà traversé la ligne
+                if track_id in self.crossed_ids:
+                    continue
+                    
+                current_ids.add(track_id)
                 if track_id not in self.persons:
                     self.persons[track_id] = TrackedPerson(box, track_id, 1.0)  # Confiance fixée à 1.0
                 else:
@@ -128,3 +134,9 @@ class PersonTracker:
                         del self.persons[person_id]
 
         return list(self.persons.values()) 
+
+    def mark_as_crossed(self, person_id):
+        """Marque un ID comme ayant traversé la ligne"""
+        self.crossed_ids.add(person_id)
+        if person_id in self.persons:
+            del self.persons[person_id] 

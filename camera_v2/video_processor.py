@@ -28,8 +28,19 @@ class VideoProcessor:
         cap.set(cv2.CAP_PROP_FPS, self.desired_fps)
         return cap
 
+    def apply_enhancement(self, frame):
+        """Améliore la qualité de l'image"""
+        # Amélioration du contraste
+        lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
+        l, a, b = cv2.split(lab)
+        clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8,8))
+        cl = clahe.apply(l)
+        enhanced = cv2.merge((cl,a,b))
+        return cv2.cvtColor(enhanced, cv2.COLOR_LAB2BGR)
+
     def process_frame(self, frame):
         frame = cv2.resize(frame, (self.output_width, self.output_height))
+        frame = self.apply_enhancement(frame)  # Ajout de l'amélioration
         if self.mask is not None:
             if self.mask.shape[:2] != frame.shape[:2]:
                 self.mask = cv2.resize(self.mask, (frame.shape[1], frame.shape[0]))

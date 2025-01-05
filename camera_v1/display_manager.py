@@ -1,5 +1,5 @@
 import cv2
-from config import frame_delay
+from config import frame_delay, SHOW_TRAJECTORIES, SAVE_VIDEO, VIDEO_OUTPUT_PATH, VIDEO_FPS, VIDEO_CODEC, output_width, output_height
 
 class DisplayManager:
     """
@@ -13,6 +13,15 @@ class DisplayManager:
         Définit le nom de la fenêtre d'affichage
         """
         self.window_name = "Tracking"
+        self.video_writer = None
+        if SAVE_VIDEO:
+            fourcc = cv2.VideoWriter_fourcc(*VIDEO_CODEC)
+            self.video_writer = cv2.VideoWriter(
+                VIDEO_OUTPUT_PATH,
+                fourcc,
+                VIDEO_FPS,
+                (output_width, output_height)
+            )
         
     def draw_person(self, frame, person):
         """
@@ -44,9 +53,13 @@ class DisplayManager:
             label += f" {person.color}"
         cv2.putText(frame, label, (x1, y1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
         
-        # Dessin de la trajectoire (ligne reliant les positions précédentes)
-        for i in range(len(person.trajectory)-1):
-            cv2.line(frame, person.trajectory[i], person.trajectory[i+1], (0, 0, 255), 2)
+        # Dessin de la trajectoire seulement si l'option est activée
+        if SHOW_TRAJECTORIES and len(person.trajectory) > 1:
+            for i in range(len(person.trajectory)-1):
+                cv2.line(frame, 
+                        person.trajectory[i],
+                        person.trajectory[i+1],
+                        (0, 0, 255), 2)
             
     def draw_counters(self, frame, counter):
         """
@@ -73,11 +86,21 @@ class DisplayManager:
         
     def show_frame(self, frame):
         """
-        Affiche la frame et gère les événements clavier
-        Args:
-            frame (np.array): Image à afficher
+        Affiche ou enregistre la frame selon la configuration
         Returns:
-            bool: True si l'utilisateur appuie sur 'q' pour quitter
+            bool: True si l'utilisateur a demandé de quitter (touche 'q')
         """
-        cv2.imshow(self.window_name, frame)
-        return cv2.waitKey(frame_delay) & 0xFF == ord('q')  # Utilise le délai configuré 
+        if SAVE_VIDEO:
+            self.video_writer.write(frame)
+            return False  # Continue jusqu'à la fin de la vidéo
+        else:
+            cv2.imshow("Tracking", frame)
+            return cv2.waitKey(1) & 0xFF == ord('q')
+
+    def release(self):
+        """
+        Libère les ressources
+        """
+        if self.video_writer is not None:
+            self.video_writer.release()
+        cv2.destroyAllWindows() 

@@ -1,6 +1,8 @@
 import numpy as np
 from collections import defaultdict
-from config import MAX_DISAPPEAR_FRAMES, MIN_IOU_THRESHOLD
+from config import MAX_DISAPPEAR_FRAMES, MIN_IOU_THRESHOLD, MIN_CONFIDENCE, IOU_THRESHOLD, modele_path, bytetrack_path
+from ultralytics import YOLO
+import cv2
 
 class TrackedPerson:
     """
@@ -54,8 +56,8 @@ class TrackedPerson:
         if len(self.trajectory) < 2 or self.crossed_line:
             return False
             
-        p1 = self.trajectory[-2]  # Position précédente
-        p2 = self.trajectory[-1]  # Position actuelle
+        p1 = self.trajectory[-2]  # Avant-dernière position
+        p2 = self.trajectory[-1]  # Dernière position
         
         def ccw(A, B, C):
             """Test d'orientation pour détecter l'intersection de segments"""
@@ -79,82 +81,48 @@ class PersonTracker:
         self.next_id = 1  # Prochain ID disponible
         self.persons = {}  # Dictionnaire des personnes suivies
         self.counter = defaultdict(int)  # Compteur par couleur
+        self.model = YOLO(modele_path)  # Ajout du modèle YOLO
         
-    def calculate_iou(self, bbox1, bbox2):
+    def update(self, frame, confidences=None):
         """
-        Calcule l'Intersection over Union entre deux boîtes englobantes
+        Met à jour l'état de toutes les personnes suivies en utilisant ByteTrack
         Args:
-            bbox1, bbox2 (list): Coordonnées des boîtes [x1, y1, x2, y2]
-        Returns:
-            float: Score IoU entre 0 et 1
-        """
-        # Calcul de l'intersection
-        x1 = max(bbox1[0], bbox2[0])
-        y1 = max(bbox1[1], bbox2[1])
-        x2 = min(bbox1[2], bbox2[2])
-        y2 = min(bbox1[3], bbox2[3])
-        
-        intersection = max(0, x2 - x1) * max(0, y2 - y1)
-        area1 = (bbox1[2] - bbox1[0]) * (bbox1[3] - bbox1[1])
-        area2 = (bbox2[2] - bbox2[0]) * (bbox2[3] - bbox2[1])
-        
-        return intersection / float(area1 + area2 - intersection)
-        
-    def update(self, detections, frame, confidences):
-        """
-        Met à jour l'état de toutes les personnes suivies
-        Args:
-            detections (list): Liste des nouvelles détections
             frame (np.array): Image courante
-            confidences (list): Scores de confiance des détections
+            confidences: non utilisé, gardé pour compatibilité
         Returns:
             list: Liste des personnes actuellement suivies
         """
-        # 1. Mise à jour des personnes disparues
-        for person_id in list(self.persons.keys()):
-            self.persons[person_id].disappeared += 1
-            if self.persons[person_id].disappeared > MAX_DISAPPEAR_FRAMES:
-                del self.persons[person_id]
-                
-        # 2. Traitement des nouvelles détections
-        if len(detections) > 0:
-            # Cas simple : aucune personne suivie
-            if len(self.persons) == 0:
-                for i, bbox in enumerate(detections):
-                    self.persons[self.next_id] = TrackedPerson(bbox, self.next_id, confidences[i])
-                    self.next_id += 1
-            else:
-                # Association des détections aux personnes existantes
-                person_ids = list(self.persons.keys())
-                person_bboxes = [self.persons[id].bbox for id in person_ids]
-                
-                # Calcul de la matrice IoU
-                iou_matrix = np.zeros((len(detections), len(person_ids)))
-                for i, detection in enumerate(detections):
-                    for j, person_bbox in enumerate(person_bboxes):
-                        iou_matrix[i, j] = self.calculate_iou(detection, person_bbox)
-                
-                # Association basée sur le meilleur score IoU
-                used_detections = set()
-                used_persons = set()
-                
-                while True:
-                    if np.max(iou_matrix) < MIN_IOU_THRESHOLD:
-                        break
-                        
-                    i, j = np.unravel_index(np.argmax(iou_matrix), iou_matrix.shape)
-                    if i not in used_detections and j not in used_persons:
-                        person_id = person_ids[j]
-                        self.persons[person_id].update_position(detections[i], frame)
-                        self.persons[person_id].disappeared = 0
-                        used_detections.add(i)
-                        used_persons.add(j)
-                    iou_matrix[i, j] = 0
-                
-                # Création de nouvelles personnes pour les détections non associées
-                for i, bbox in enumerate(detections):
-                    if i not in used_detections:
-                        self.persons[self.next_id] = TrackedPerson(bbox, self.next_id, confidences[i])
-                        self.next_id += 1
-                        
+        # Détection et tracking avec ByteTrack
+        results = self.model.track(
+            source=frame,
+            persist=True,
+            tracker=bytetrack_path,
+            classes=0,
+            conf=MIN_CONFIDENCE,
+            iou=IOU_THRESHOLD,
+            verbose=False
+        )
+
+        # Mise à jour des personnes suivies
+        if results and len(results) > 0 and results[0].boxes.id is not None:
+            boxes = results[0].boxes.xyxy.cpu().numpy()
+            ids = results[0].boxes.id.cpu().numpy()
+            
+            # Mettre à jour ou créer les personnes suivies
+            current_ids = set()
+            for box, track_id in zip(boxes, ids):
+                current_ids.add(int(track_id))
+                if track_id not in self.persons:
+                    self.persons[track_id] = TrackedPerson(box, track_id, 1.0)  # Confiance fixée à 1.0
+                else:
+                    self.persons[track_id].update_position(box, frame)
+                    self.persons[track_id].disappeared = 0
+
+            # Supprimer les personnes qui ne sont plus détectées
+            for person_id in list(self.persons.keys()):
+                if person_id not in current_ids:
+                    self.persons[person_id].disappeared += 1
+                    if self.persons[person_id].disappeared > MAX_DISAPPEAR_FRAMES:
+                        del self.persons[person_id]
+
         return list(self.persons.values()) 

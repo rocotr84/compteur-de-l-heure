@@ -38,7 +38,7 @@ class ColorHistory:
         
         # Écrit l'en-tête seulement si le fichier est nouveau
         if not file_exists:
-            self.csv_writer.writerow(['Timestamp', 'ID', 'Dominant Color'])
+            self.csv_writer.writerow(['Timestamp', 'Elapsed Time', 'ID', 'Dominant Color'])
             print(f"Fichier CSV créé : {self.output_file}")
 
     def update_color(self, person_id, color):
@@ -68,17 +68,21 @@ class ColorHistory:
         # Retourne la couleur la plus fréquente
         return max(color_counts.items(), key=lambda x: x[1])[0]
 
-    def record_crossing(self, person_id):
-        """Enregistre le passage avec la couleur dominante"""
+    def record_crossing(self, person_id, elapsed_time):
+        """Enregistre le passage avec la couleur dominante et le temps écoulé"""
         dominant_color = self.get_dominant_color(person_id)
         if dominant_color:
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            minutes = int(elapsed_time // 60)
+            seconds = int(elapsed_time % 60)
+            elapsed_str = f"{minutes:02d}:{seconds:02d}"
+            
             try:
-                print(f"Tentative d'écriture dans le CSV pour ID={person_id}")  # Debug
-                self.csv_writer.writerow([timestamp, person_id, dominant_color])
+                print(f"Tentative d'écriture dans le CSV pour ID={person_id}")
+                self.csv_writer.writerow([timestamp, elapsed_str, person_id, dominant_color])
                 self.csv_file.flush()
                 os.fsync(self.csv_file.fileno())
-                print(f"Écriture CSV réussie : {timestamp}, {person_id}, {dominant_color}")  # Debug
+                print(f"Écriture CSV réussie : {timestamp}, {elapsed_str}, {person_id}, {dominant_color}")
             except Exception as e:
                 print(f"Erreur d'écriture CSV : {e}")
             

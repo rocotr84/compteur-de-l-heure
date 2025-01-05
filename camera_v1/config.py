@@ -34,7 +34,7 @@ bytetrack_path = "bytetrack.yaml"  # Chemin vers la config ByteTrack q
 SHOW_TRAJECTORIES = False  # Option pour activer/désactiver l'affichage des trajectoires
 
 # Options d'enregistrement vidéo
-SAVE_VIDEO = False  # Option pour activer l'enregistrement au lieu de l'affichage
+SAVE_VIDEO = True  # Option pour activer l'enregistrement au lieu de l'affichage
 VIDEO_OUTPUT_PATH = "output.mp4"  # Chemin du fichier de sortie
-VIDEO_FPS = 60  # FPS pour la vidéo de sortie
+VIDEO_FPS = 30  # FPS pour la vidéo de sortie
 VIDEO_CODEC = 'mp4v'  # Codec vidéo (peut aussi être 'XVID' pour .avi)

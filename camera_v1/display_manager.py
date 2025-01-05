@@ -1,4 +1,5 @@
 import cv2
+import time
 from config import frame_delay, SHOW_TRAJECTORIES, SAVE_VIDEO, VIDEO_OUTPUT_PATH, VIDEO_FPS, VIDEO_CODEC, output_width, output_height
 from color_detector import ColorDetector
 
@@ -16,6 +17,7 @@ class DisplayManager:
         self.window_name = "Tracking"
         self.video_writer = None
         self.color_detector = ColorDetector()
+        self.start_time = time.time()  # Ajout du temps de départ
         if SAVE_VIDEO:
             fourcc = cv2.VideoWriter_fourcc(*VIDEO_CODEC)
             self.video_writer = cv2.VideoWriter(
@@ -141,18 +143,34 @@ class DisplayManager:
         """
         cv2.line(frame, start_point, end_point, (0, 0, 255), 2)
         
+    def draw_timer(self, frame):
+        """Affiche le chronomètre sur l'image"""
+        elapsed_time = time.time() - self.start_time
+        minutes = int(elapsed_time // 60)
+        seconds = int(elapsed_time % 60)
+        timer_text = f"{minutes:02d}:{seconds:02d}"
+        
+        # Position en haut à gauche
+        cv2.putText(frame, timer_text, (10, 30),
+                   cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+        
+        return elapsed_time  # Retourne le temps écoulé pour l'utiliser ailleurs
+
     def show_frame(self, frame):
         """
         Affiche ou enregistre la frame selon la configuration
         Returns:
             bool: True si l'utilisateur a demandé de quitter (touche 'q')
+            float: Temps écoulé depuis le début
         """
+        elapsed_time = self.draw_timer(frame)
+        
         if SAVE_VIDEO:
             self.video_writer.write(frame)
-            return False  # Continue jusqu'à la fin de la vidéo
+            return False, elapsed_time
         else:
             cv2.imshow("Tracking", frame)
-            return cv2.waitKey(1) & 0xFF == ord('q')
+            return cv2.waitKey(1) & 0xFF == ord('q'), elapsed_time
 
     def release(self):
         """

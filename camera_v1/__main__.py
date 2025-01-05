@@ -10,6 +10,7 @@ from color_history import ColorHistory
 import signal
 import sys
 import torch
+import time
 
 """
 Module principal de l'application de comptage de personnes.
@@ -91,7 +92,8 @@ def main():
             for person_id in ids_to_process:
                 if person_id in tracker.persons:  # Vérification supplémentaire
                     print(f"!!! Ligne traversée par ID={person_id} !!!")
-                    color_tracker.record_crossing(person_id)
+                    elapsed_time = display.draw_timer(frame)  # Obtient le temps écoulé
+                    color_tracker.record_crossing(person_id, elapsed_time)
                     dominant_color = color_tracker.get_dominant_color(person_id)
                     if dominant_color:
                         tracker.counter[dominant_color] += 1
@@ -105,7 +107,8 @@ def main():
             display.draw_crossing_line(frame, line_start, line_end)
             display.draw_counters(frame, tracker.counter)
             
-            if display.show_frame(frame):
+            should_quit, elapsed_time = display.show_frame(frame)  # Récupération du temps écoulé
+            if should_quit:
                 break
                 
     except Exception as e:
@@ -114,9 +117,10 @@ def main():
     finally:
         print("Fermeture du programme...")
         if color_tracker:
-            # Sauvegarde finale des données
+            # Sauvegarde finale des données avec le temps écoulé final
+            final_elapsed_time = time.time() - display.start_time
             for person_id in list(color_tracker.color_history.keys()):
-                color_tracker.record_crossing(person_id)
+                color_tracker.record_crossing(person_id, final_elapsed_time)
         cap.release()
         display.release()
 

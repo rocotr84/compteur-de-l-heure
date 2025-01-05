@@ -9,6 +9,7 @@ from config import *
 from color_history import ColorHistory
 import signal
 import sys
+import torch
 
 """
 Module principal de l'application de comptage de personnes.
@@ -28,6 +29,15 @@ def signal_handler(sig, frame):
             color_tracker.record_crossing(person_id)
         del color_tracker
     sys.exit(0)
+
+def setup_device():
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+        print(f"GPU détectée: {torch.cuda.get_device_name()}")
+    else:
+        device = torch.device("cpu")
+        print("GPU non disponible, utilisation du CPU")
+    return device
 
 def main():
     """
@@ -50,6 +60,10 @@ def main():
     # Configuration du processeur vidéo
     video_proc.load_mask(mask_path)
     cap = video_proc.setup_video_capture(video_path)
+    
+    device = setup_device()
+    # Passage du modèle sur GPU
+    tracker.model = tracker.model.to(device)
     
     try:
         while True:

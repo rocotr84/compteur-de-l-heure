@@ -6,8 +6,19 @@ import cv2
 
 class TrackedPerson:
     """
-    Classe représentant une personne suivie dans la vidéo.
-    Gère la position, la trajectoire et l'état de la personne.
+    Représentation d'un coureur suivi dans la vidéo.
+    
+    Cette classe maintient l'état et les attributs d'un coureur détecté,
+    incluant sa position, sa trajectoire et son état de franchissement de ligne.
+
+    Attributes:
+        bbox (list): Coordonnées de la boîte englobante [x1, y1, x2, y2]
+        id (int): Identifiant unique du coureur
+        confidence (float): Score de confiance de la détection
+        color (str): Couleur dominante du t-shirt
+        disappeared (int): Nombre de frames depuis la dernière détection
+        trajectory (list): Liste des positions centrales précédentes
+        crossed_line (bool): Indicateur de franchissement de ligne
     """
     def __init__(self, bbox, id, confidence):
         """
@@ -76,8 +87,21 @@ class TrackedPerson:
 
 class PersonTracker:
     """
-    Gère le suivi de plusieurs personnes dans la vidéo.
-    Utilise l'IoU (Intersection over Union) pour associer les détections.
+    Gestionnaire principal du suivi des coureurs.
+    
+    Utilise ByteTrack pour le suivi des coureurs et gère leur état
+    tout au long de la vidéo.
+
+    Attributes:
+        next_id (int): Prochain ID disponible pour un nouveau coureur
+        persons (dict): Dictionnaire des coureurs actuellement suivis
+        counter (defaultdict): Compteur par couleur de t-shirt
+        model (YOLO): Modèle YOLO pour la détection
+        crossed_ids (set): Ensemble des IDs ayant franchi la ligne
+
+    Notes:
+        - Utilise l'algorithme ByteTrack pour un suivi robuste
+        - Maintient un état des coureurs ayant déjà franchi la ligne
     """
     def __init__(self):
         self.next_id = 1  # Prochain ID disponible

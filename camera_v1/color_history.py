@@ -5,6 +5,23 @@ from pathlib import Path
 import os
 
 class ColorHistory:
+    """
+    Gestionnaire d'historique des couleurs détectées pour chaque coureur.
+    
+    Cette classe maintient un historique des couleurs détectées pour chaque coureur
+    et enregistre les données dans un fichier CSV lors du franchissement de la ligne.
+
+    Attributes:
+        color_history (defaultdict): Historique des couleurs par ID de coureur
+        output_file (Path): Chemin du fichier CSV de sortie
+        csv_file (file): Fichier CSV ouvert en mode append
+        csv_writer (csv.writer): Objet writer pour l'écriture CSV
+
+    Notes:
+        Le fichier CSV est créé avec un buffer minimal pour assurer
+        l'enregistrement immédiat des données.
+    """
+
     def __init__(self, output_file="detections.csv"):
         self.color_history = defaultdict(list)  # {id: [liste des couleurs détectées]}
         current_dir = Path(__file__).parent
@@ -25,7 +42,17 @@ class ColorHistory:
             print(f"Fichier CSV créé : {self.output_file}")
 
     def update_color(self, person_id, color):
-        """Ajoute une couleur détectée pour un ID"""
+        """
+        Met à jour l'historique des couleurs pour un coureur.
+
+        Args:
+            person_id (int): Identifiant unique du coureur
+            color (str): Couleur détectée
+
+        Notes:
+            Les couleurs sont accumulées pour permettre une détermination
+            statistique de la couleur dominante.
+        """
         self.color_history[person_id].append(color)
 
     def get_dominant_color(self, person_id):

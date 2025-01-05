@@ -3,8 +3,20 @@ import numpy as np
 
 class VideoProcessor:
     """
-    Classe responsable du traitement des frames vidéo.
-    Gère le redimensionnement, l'application de masques et les ajustements d'image.
+    Processeur de flux vidéo pour l'analyse des coureurs.
+    
+    Gère le traitement des images vidéo, incluant le redimensionnement,
+    l'application de masques et les ajustements d'image.
+
+    Attributes:
+        output_width (int): Largeur cible des images traitées
+        output_height (int): Hauteur cible des images traitées
+        desired_fps (int): FPS souhaité pour le traitement
+        mask (np.ndarray): Masque binaire pour filtrer les zones d'intérêt
+
+    Notes:
+        - Le masque permet d'exclure certaines zones de l'image du traitement
+        - Les dimensions de sortie sont fixes pour assurer la cohérence du traitement
     """
     def __init__(self, output_width=1280, output_height=720, desired_fps=30):
         """
@@ -92,16 +104,19 @@ class VideoProcessor:
 
     def adjust_brightness(self, img, factor=1.2):
         """
-        Ajuste la luminosité d'une image
+        Ajuste la luminosité d'une image.
+
         Args:
-            img (np.array): Image à ajuster
-            factor (float): Facteur de multiplication de la luminosité (>1 = plus clair, <1 = plus sombre)
+            img (np.ndarray): Image source en format BGR
+            factor (float): Facteur de multiplication de la luminosité
+                          >1 pour éclaircir, <1 pour assombrir
+
         Returns:
-            np.array: Image avec luminosité ajustée
-            
-        Note:
-            L'ajustement se fait dans l'espace colorimétrique HSV
-            pour préserver les couleurs tout en modifiant la luminosité
+            np.ndarray: Image avec luminosité ajustée
+
+        Notes:
+            L'ajustement est effectué dans l'espace HSV pour préserver
+            la teinte et la saturation des couleurs.
         """
         # Conversion en HSV pour modifier la luminosité
         hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)

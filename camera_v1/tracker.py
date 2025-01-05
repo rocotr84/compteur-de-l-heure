@@ -15,7 +15,7 @@ class TrackedPerson:
         bbox (list): Coordonnées de la boîte englobante [x1, y1, x2, y2]
         id (int): Identifiant unique du coureur
         confidence (float): Score de confiance de la détection
-        color (str): Couleur dominante du t-shirt
+        value (str): Valeur dominante du t-shirt
         disappeared (int): Nombre de frames depuis la dernière détection
         trajectory (list): Liste des positions centrales précédentes
         crossed_line (bool): Indicateur de franchissement de ligne
@@ -31,7 +31,7 @@ class TrackedPerson:
         self.bbox = bbox
         self.id = id
         self.confidence = confidence
-        self.color = None  # Couleur dominante du t-shirt
+        self.value = None  # Valeur dominante du t-shirt
         self.disappeared = 0  # Nombre de frames depuis la dernière détection
         self.trajectory = []  # Liste des positions centrales précédentes
         self.crossed_line = False  # Indique si la personne a déjà traversé la ligne

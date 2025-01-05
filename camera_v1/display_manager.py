@@ -1,5 +1,6 @@
 import cv2
 from config import frame_delay, SHOW_TRAJECTORIES, SAVE_VIDEO, VIDEO_OUTPUT_PATH, VIDEO_FPS, VIDEO_CODEC, output_width, output_height
+from color_detector import ColorDetector
 
 class DisplayManager:
     """
@@ -14,6 +15,7 @@ class DisplayManager:
         """
         self.window_name = "Tracking"
         self.video_writer = None
+        self.color_detector = ColorDetector()
         if SAVE_VIDEO:
             fourcc = cv2.VideoWriter_fourcc(*VIDEO_CODEC)
             self.video_writer = cv2.VideoWriter(
@@ -45,13 +47,57 @@ class DisplayManager:
         
         # Vérification que la ROI est dans les limites de l'image
         if roi_x1 >= 0 and roi_y1 >= 0 and roi_x2 <= frame.shape[1] and roi_y2 <= frame.shape[0]:
-            cv2.rectangle(frame, (roi_x1, roi_y1), (roi_x2, roi_y2), (0, 0, 255), 2)
+            # Détection de la couleur
+            roi_coords = (roi_x1, roi_y1, roi_x2, roi_y2)
+            color = self.color_detector.get_dominant_color(frame, roi_coords)
+            person.color = color  # Stocke la couleur dans l'objet person
+            
+            # Visualisation de la couleur détectée
+            self.color_detector.visualize_color(frame, roi_coords, color)
         
-        # Affichage des informations (ID et couleur) au-dessus de la personne
-        label = f"ID: {person.id}"
+        # Affichage de l'ID (en entier) et de la couleur au-dessus de la personne
+        id_str = f"{int(person.id)}"  # Conversion en entier
         if person.color:
-            label += f" {person.color}"
-        cv2.putText(frame, label, (x1, y1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+            # Traduction des couleurs en français
+            color_translation = {
+                "rouge_fonce": "rouge fonce",
+                "bleu_fonce": "bleu fonce",
+                "bleu_clair": "bleu clair",
+                "vert_fonce": "vert fonce",
+                "vert_clair": "vert clair",
+                "rose": "rose",
+                "jaune": "jaune",
+                "blanc": "blanc",
+                "noir": "noir",
+                "inconnu": "inconnu"
+            }
+            color_fr = color_translation.get(person.color, person.color)
+            label = f"{id_str} - {color_fr}"
+        else:
+            label = id_str
+        
+        # Affichage du texte avec un fond noir pour meilleure lisibilité
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        font_scale = 0.5
+        thickness = 2
+        
+        # Calcul de la taille du texte pour le fond
+        (text_width, text_height), _ = cv2.getTextSize(label, font, font_scale, thickness)
+        
+        # Dessin du fond noir
+        cv2.rectangle(frame, 
+                     (x1, y1 - text_height - 5), 
+                     (x1 + text_width, y1), 
+                     (0, 0, 0), 
+                     -1)
+        
+        # Dessin du texte
+        cv2.putText(frame, label, 
+                    (x1, y1-5), 
+                    font, 
+                    font_scale, 
+                    (255, 255, 255),  # Texte en blanc
+                    thickness)
         
         # Dessin de la trajectoire seulement si l'option est activée
         if SHOW_TRAJECTORIES and len(person.trajectory) > 1:

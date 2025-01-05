@@ -2,11 +2,11 @@ import os
 
 # Configuration des chemins d'accès aux ressources
 current_dir = os.path.dirname(__file__)
-video_path = os.path.join(current_dir, "..", "assets", "test.mp4")
+video_path = os.path.join(current_dir, "..", "assets", "p3.mp4")
 #video_path = os.path.join(current_dir, "..", "assets", "man_alone.mp4")
 #video_path = os.path.join(current_dir, "..", "assets", "video.mp4")
 modele_path = os.path.join(current_dir, "..", "assets", "yolo11x.pt")
-mask_path = os.path.join(current_dir, "..", "assets", "p3_mask1.png")
+mask_path = os.path.join(current_dir, "..", "assets", "p3_mask.png")
 
 
 # Configuration des paramètres globaux

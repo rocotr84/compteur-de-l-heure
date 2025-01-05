@@ -1,6 +1,9 @@
 import cv2
-from config import frame_delay, SHOW_TRAJECTORIES, SAVE_VIDEO, VIDEO_OUTPUT_PATH, VIDEO_FPS, VIDEO_CODEC, output_width, output_height
+import time
+from config import (frame_delay, SHOW_TRAJECTORIES, SAVE_VIDEO, VIDEO_OUTPUT_PATH, 
+                   VIDEO_FPS, VIDEO_CODEC, output_width, output_height, DETECTION_MODE)
 from color_detector import ColorDetector
+from number_detector import NumberDetector
 
 class DisplayManager:
     """
@@ -15,7 +18,11 @@ class DisplayManager:
         """
         self.window_name = "Tracking"
         self.video_writer = None
-        self.color_detector = ColorDetector()
+        if DETECTION_MODE == "color":
+            self.detector = ColorDetector()
+        else:
+            self.detector = NumberDetector()
+        self.start_time = time.time()  # Ajout du temps de départ
         if SAVE_VIDEO:
             fourcc = cv2.VideoWriter_fourcc(*VIDEO_CODEC)
             self.video_writer = cv2.VideoWriter(
@@ -47,17 +54,21 @@ class DisplayManager:
         
         # Vérification que la ROI est dans les limites de l'image
         if roi_x1 >= 0 and roi_y1 >= 0 and roi_x2 <= frame.shape[1] and roi_y2 <= frame.shape[0]:
-            # Détection de la couleur
             roi_coords = (roi_x1, roi_y1, roi_x2, roi_y2)
-            color = self.color_detector.get_dominant_color(frame, roi_coords)
-            person.color = color  # Stocke la couleur dans l'objet person
             
-            # Visualisation de la couleur détectée
-            self.color_detector.visualize_color(frame, roi_coords, color)
+            if DETECTION_MODE == "color":
+                detected_value = self.detector.get_dominant_color(frame, roi_coords)
+                person.value = detected_value
+                self.detector.visualize_color(frame, roi_coords, detected_value)
+            else:
+                detected_value = self.detector.get_number(frame, roi_coords)
+                person.value = detected_value
+                self.detector.visualize_number(frame, roi_coords, detected_value)
         
-        # Affichage de l'ID (en entier) et de la couleur au-dessus de la personne
+        # Affichage de l'ID (en entier) et de la valeur détectée au-dessus de la personne
         id_str = f"{int(person.id)}"  # Conversion en entier
-        if person.color:
+        
+        if DETECTION_MODE == "color" and person.value:
             # Traduction des couleurs en français
             color_translation = {
                 "rouge_fonce": "rouge fonce",
@@ -71,8 +82,10 @@ class DisplayManager:
                 "noir": "noir",
                 "inconnu": "inconnu"
             }
-            color_fr = color_translation.get(person.color, person.color)
+            color_fr = color_translation.get(person.value, person.value)
             label = f"{id_str} - {color_fr}"
+        elif DETECTION_MODE == "number" and person.value:
+            label = f"{id_str} - N°{person.value}"
         else:
             label = id_str
         
@@ -141,18 +154,34 @@ class DisplayManager:
         """
         cv2.line(frame, start_point, end_point, (0, 0, 255), 2)
         
+    def draw_timer(self, frame):
+        """Affiche le chronomètre sur l'image"""
+        elapsed_time = time.time() - self.start_time
+        minutes = int(elapsed_time // 60)
+        seconds = int(elapsed_time % 60)
+        timer_text = f"{minutes:02d}:{seconds:02d}"
+        
+        # Position en haut à gauche
+        cv2.putText(frame, timer_text, (10, 30),
+                   cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+        
+        return elapsed_time  # Retourne le temps écoulé pour l'utiliser ailleurs
+
     def show_frame(self, frame):
         """
         Affiche ou enregistre la frame selon la configuration
         Returns:
             bool: True si l'utilisateur a demandé de quitter (touche 'q')
+            float: Temps écoulé depuis le début
         """
+        elapsed_time = self.draw_timer(frame)
+        
         if SAVE_VIDEO:
             self.video_writer.write(frame)
-            return False  # Continue jusqu'à la fin de la vidéo
+            return False, elapsed_time
         else:
             cv2.imshow("Tracking", frame)
-            return cv2.waitKey(1) & 0xFF == ord('q')
+            return cv2.waitKey(1) & 0xFF == ord('q'), elapsed_time
 
     def release(self):
         """

@@ -15,7 +15,7 @@ class TrackedPerson:
         bbox (list): Coordonnées de la boîte englobante [x1, y1, x2, y2]
         id (int): Identifiant unique du coureur
         confidence (float): Score de confiance de la détection
-        color (str): Couleur dominante du t-shirt
+        value (str): Valeur dominante du t-shirt
         disappeared (int): Nombre de frames depuis la dernière détection
         trajectory (list): Liste des positions centrales précédentes
         crossed_line (bool): Indicateur de franchissement de ligne
@@ -31,7 +31,7 @@ class TrackedPerson:
         self.bbox = bbox
         self.id = id
         self.confidence = confidence
-        self.color = None  # Couleur dominante du t-shirt
+        self.value = None  # Valeur dominante du t-shirt
         self.disappeared = 0  # Nombre de frames depuis la dernière détection
         self.trajectory = []  # Liste des positions centrales précédentes
         self.crossed_line = False  # Indique si la personne a déjà traversé la ligne
@@ -104,12 +104,13 @@ class PersonTracker:
         - Maintient un état des coureurs ayant déjà franchi la ligne
     """
     def __init__(self):
-        self.next_id = 1  # Prochain ID disponible
+        self.next_id = 1  # On commence à 1
         self.persons = {}  # Dictionnaire des personnes suivies
-        self.counter = defaultdict(int)  # Compteur par couleur
-        self.model = YOLO(modele_path)  # Ajout du modèle YOLO
-        self.crossed_ids = set()  # Nouveau : ensemble des IDs ayant traversé la ligne
-        
+        self.counter = defaultdict(int)
+        self.model = YOLO(modele_path)
+        self.crossed_ids = set()
+        self.id_mapping = {}  # Nouveau: mapping entre les IDs de ByteTrack et nos IDs séquentiels
+
     def update(self, frame, confidences=None):
         """
         Met à jour l'état de toutes les personnes suivies en utilisant ByteTrack
@@ -133,22 +134,32 @@ class PersonTracker:
         # Mise à jour des personnes suivies
         if results and len(results) > 0 and results[0].boxes.id is not None:
             boxes = results[0].boxes.xyxy.cpu().numpy()
-            ids = results[0].boxes.id.cpu().numpy()
+            bytetrack_ids = results[0].boxes.id.cpu().numpy()
             
-            # Mettre à jour ou créer les personnes suivies
             current_ids = set()
-            for box, track_id in zip(boxes, ids):
-                track_id = int(track_id)
+            
+            for box, bytetrack_id in zip(boxes, bytetrack_ids):
+                bytetrack_id = int(bytetrack_id)
+                
+                # Si l'ID ByteTrack n'est pas dans notre mapping, lui assigner un nouvel ID séquentiel
+                if bytetrack_id not in self.id_mapping:
+                    self.id_mapping[bytetrack_id] = self.next_id
+                    self.next_id += 1
+                
+                # Utiliser notre ID séquentiel
+                sequential_id = self.id_mapping[bytetrack_id]
+                
                 # Ignorer les IDs qui ont déjà traversé la ligne
-                if track_id in self.crossed_ids:
+                if sequential_id in self.crossed_ids:
                     continue
                     
-                current_ids.add(track_id)
-                if track_id not in self.persons:
-                    self.persons[track_id] = TrackedPerson(box, track_id, 1.0)  # Confiance fixée à 1.0
+                current_ids.add(sequential_id)
+                
+                if sequential_id not in self.persons:
+                    self.persons[sequential_id] = TrackedPerson(box, sequential_id, 1.0)
                 else:
-                    self.persons[track_id].update_position(box, frame)
-                    self.persons[track_id].disappeared = 0
+                    self.persons[sequential_id].update_position(box, frame)
+                    self.persons[sequential_id].disappeared = 0
 
             # Supprimer les personnes qui ne sont plus détectées
             for person_id in list(self.persons.keys()):
@@ -157,7 +168,7 @@ class PersonTracker:
                     if self.persons[person_id].disappeared > MAX_DISAPPEAR_FRAMES:
                         del self.persons[person_id]
 
-        return list(self.persons.values()) 
+        return list(self.persons.values())
 
     def mark_as_crossed(self, person_id):
         """Marque un ID comme ayant traversé la ligne"""

@@ -6,10 +6,12 @@ from video_processor import VideoProcessor
 from display_manager import DisplayManager
 from tracker import PersonTracker
 from config import *
-from color_history import ColorHistory
+from detection_history import DetectionHistory
+from config import DETECTION_MODE
 import signal
 import sys
 import torch
+import time
 
 """
 Module principal de l'application de comptage de personnes.
@@ -18,16 +20,16 @@ entre les différents modules (détection, tracking, affichage).
 """
 
 # Variable globale pour le color_tracker
-color_tracker = None
+detection_tracker = None
 
 def signal_handler(sig, frame):
     """Gestionnaire pour l'arrêt propre du programme"""
     print("\nSauvegarde des données et arrêt du programme...")
-    if color_tracker:
+    if detection_tracker:
         # Enregistre les données restantes pour chaque personne suivie
-        for person_id in list(color_tracker.color_history.keys()):
-            color_tracker.record_crossing(person_id)
-        del color_tracker
+        for person_id in list(detection_tracker.color_history.keys()):
+            detection_tracker.record_crossing(person_id)
+        del detection_tracker
     sys.exit(0)
 
 def setup_device():
@@ -43,14 +45,14 @@ def main():
     """
     Fonction principale du programme
     """
-    global color_tracker
+    global detection_tracker
     
     # Initialisation du gestionnaire de signaux
     signal.signal(signal.SIGINT, signal_handler)  # Pour Ctrl+C
     signal.signal(signal.SIGTERM, signal_handler)  # Pour kill
     
-    color_tracker = ColorHistory()
-    print(f"Démarrage du suivi des couleurs...")
+    detection_tracker = DetectionHistory()
+    print(f"Démarrage du suivi en mode {DETECTION_MODE}...")
     
     # Initialisation des composants
     tracker = PersonTracker()
@@ -80,8 +82,8 @@ def main():
             # Utilisation d'une copie du dictionnaire pour l'itération
             for person_id, person in list(tracker.persons.items()):
                 # Mise à jour de la couleur
-                if hasattr(person, 'color') and person.color is not None:
-                    color_tracker.update_color(person_id, person.color)
+                if hasattr(person, 'value') and person.value is not None:
+                    detection_tracker.update_color(person_id, person.value)
                 
                 # Vérification du franchissement de ligne
                 if person.check_line_crossing(line_start, line_end):
@@ -89,12 +91,18 @@ def main():
             
             # Traitement des IDs après l'itération
             for person_id in ids_to_process:
-                if person_id in tracker.persons:  # Vérification supplémentaire
+                if person_id in tracker.persons:
                     print(f"!!! Ligne traversée par ID={person_id} !!!")
-                    color_tracker.record_crossing(person_id)
-                    dominant_color = color_tracker.get_dominant_color(person_id)
-                    if dominant_color:
-                        tracker.counter[dominant_color] += 1
+                    elapsed_time = display.draw_timer(frame)
+                    
+                    # Assurez-vous que la couleur ou le numéro est mis à jour ici
+                    detected_value = detection_tracker.get_dominant_value(person_id)  # Récupérer la valeur dominante
+                    detection_tracker.update_color(person_id, detected_value)  # Mettez à jour l'historique
+                    
+                    detection_tracker.record_crossing(person_id, elapsed_time)  # Enregistrer le passage
+                    dominant_value = detection_tracker.get_dominant_value(person_id)
+                    if dominant_value:
+                        tracker.counter[dominant_value] += 1
                     tracker.mark_as_crossed(person_id)
                     print(f"Personne ID={person_id} marquée comme ayant traversé")
             
@@ -105,7 +113,8 @@ def main():
             display.draw_crossing_line(frame, line_start, line_end)
             display.draw_counters(frame, tracker.counter)
             
-            if display.show_frame(frame):
+            should_quit, elapsed_time = display.show_frame(frame)  # Récupération du temps écoulé
+            if should_quit:
                 break
                 
     except Exception as e:
@@ -113,10 +122,11 @@ def main():
         
     finally:
         print("Fermeture du programme...")
-        if color_tracker:
-            # Sauvegarde finale des données
-            for person_id in list(color_tracker.color_history.keys()):
-                color_tracker.record_crossing(person_id)
+        if detection_tracker:
+            # Sauvegarde finale des données avec le temps écoulé final
+            final_elapsed_time = time.time() - display.start_time
+            for person_id in list(detection_tracker.color_history.keys()):
+                detection_tracker.record_crossing(person_id, final_elapsed_time)
         cap.release()
         display.release()
 

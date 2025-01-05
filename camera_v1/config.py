@@ -60,4 +60,4 @@ NUMBER_MIN_CONFIDENCE = 0.6
 NUMBER_ROI_SCALE = 0.4  # Taille relative de la ROI par rapport à la bbox
 
 
-#ese
+#eseeeee

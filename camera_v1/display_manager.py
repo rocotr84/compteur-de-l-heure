@@ -106,7 +106,18 @@ class DisplayManager:
                         person.trajectory[i],
                         person.trajectory[i+1],
                         (0, 0, 255), 2)
-            
+        
+        # Dessine le point de référence (point du bas) utilisé pour le comptage
+        bottom_center = person.get_center()
+        center_point = (int(bottom_center[0]), int(bottom_center[1]))
+        
+        # Dessine un point plus gros et plus visible
+        cv2.circle(frame, 
+                   center_point,  
+                   1,            # Rayon plus grand
+                   (0, 0, 255),  # Couleur rouge vif
+                   -1)           # Remplissage
+        
     def draw_counters(self, frame, counter):
         """
         Affiche les compteurs pour chaque couleur

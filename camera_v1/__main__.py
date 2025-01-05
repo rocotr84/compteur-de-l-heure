@@ -67,23 +67,22 @@ def main():
             # Liste des IDs à supprimer après le traitement
             ids_to_remove = []
             
-            print(f"Nombre de personnes suivies : {len(tracker.persons)}")
-            
             # Traitement de chaque personne
             for person_id, person in tracker.persons.items():
                 # Mise à jour de la couleur
                 if hasattr(person, 'color') and person.color is not None:
                     color_tracker.update_color(person_id, person.color)
-                    print(f"ID={person_id}, Couleur={person.color}")
                 
                 # Vérification du franchissement de ligne
                 if person.check_line_crossing(line_start, line_end):
                     print(f"!!! Ligne traversée par ID={person_id} !!!")
+                    # Enregistrement dans le CSV
                     color_tracker.record_crossing(person_id)
+                    # Mise à jour du compteur
                     dominant_color = color_tracker.get_dominant_color(person_id)
                     if dominant_color:
                         tracker.counter[dominant_color] += 1
-                        print(f"Compteur mis à jour pour {dominant_color}")
+                    # Marquer pour suppression
                     ids_to_remove.append(person_id)
             
             # Suppression des personnes ayant traversé la ligne

@@ -47,7 +47,14 @@ VIDEO_OUTPUT_PATH = "output.mp4"  # Chemin du fichier de sortie
 VIDEO_FPS = 30  # FPS pour la vidéo de sortie
 VIDEO_CODEC = 'mp4v'  # Codec vidéo (peut aussi être 'XVID' pour .avi)
 
-# Paramètres de détection des couleurs
-MIN_PIXEL_RATIO = 0.15    # Pourcentage minimal de pixels requis dans la ROI (15%)
-MIN_PIXEL_COUNT = 100     # Nombre minimal absolu de pixels pour une couleur
-COLOR_HISTORY_SIZE = 2    # Nombre de frames pour la stabilité temporelle
+# Configuration du mode de détection
+DETECTION_MODE = "color"  # "color" ou "number"
+
+# Configuration de la détection des couleurs
+COLOR_MIN_PIXEL_RATIO = 0.15
+COLOR_MIN_PIXEL_COUNT = 100
+COLOR_HISTORY_SIZE = 2
+
+# Configuration de la détection des numéros
+NUMBER_MIN_CONFIDENCE = 0.6
+NUMBER_ROI_SCALE = 0.4  # Taille relative de la ROI par rapport à la bbox

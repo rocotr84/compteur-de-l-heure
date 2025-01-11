@@ -2,11 +2,11 @@ import os
 
 # Configuration des chemins d'accès aux ressources
 current_dir = os.path.dirname(__file__)
-video_path = os.path.join(current_dir, "..", "assets", "p3.mp4")
+video_path = os.path.join(current_dir, "..", "assets", "number.mp4")
 #video_path = os.path.join(current_dir, "..", "assets", "man_alone.mp4")
 #video_path = os.path.join(current_dir, "..", "assets", "video.mp4")
 modele_path = os.path.join(current_dir, "..", "assets", "yolo11x.pt")
-mask_path = os.path.join(current_dir, "..", "assets", "p3_mask.png")
+mask_path = os.path.join(current_dir, "..", "assets", "p3_mask1.png")
 
 
 # Configuration des paramètres globaux
@@ -48,7 +48,7 @@ VIDEO_FPS = 30  # FPS pour la vidéo de sortie
 VIDEO_CODEC = 'mp4v'  # Codec vidéo (peut aussi être 'XVID' pour .avi)
 
 # Configuration du mode de détection
-DETECTION_MODE = "color"  # "color" ou "number"
+DETECTION_MODE = "number"  # "color" ou "number"
 
 # Configuration de la détection des couleurs
 COLOR_MIN_PIXEL_RATIO = 0.15

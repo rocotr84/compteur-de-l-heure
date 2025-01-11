@@ -13,7 +13,7 @@ class NumberDetector:
         # Initialisation du lecteur OCR (uniquement pour les chiffres)
         self.reader = easyocr.Reader(['en'], gpu=True)
         # Configuration pour le prétraitement d'image
-        self.min_confidence = 0.6
+        self.min_confidence = 0.4
         
     def preprocess_roi(self, roi):
         """
@@ -50,23 +50,40 @@ class NumberDetector:
         try:
             # Extraction de la ROI
             x1, y1, x2, y2 = roi_coords
+            
+            # Agrandir la ROI
+            width = x2 - x1
+            height = y2 - y1
+            
+            # Ajustez les coordonnées pour agrandir la ROI
+            x1 = max(0, x1 - int(width * 0.2))  # Réduire x1 de 20% de la largeur
+            y1 = max(0, y1 - int(height * 0.2))  # Réduire y1 de 20% de la hauteur
+            x2 = min(frame.shape[1], x2 + int(width * 0.2))  # Augmenter x2 de 20% de la largeur
+            y2 = min(frame.shape[0], y2 + int(height * 0.2))  # Augmenter y2 de 20% de la hauteur
+            
             roi = frame[y1:y2, x1:x2]
             
             if roi.size == 0:
+                print("ROI vide, aucune image à traiter.")  # Debug
                 return None
 
             # Prétraitement de la ROI
             processed_roi = self.preprocess_roi(roi)
+            print("ROI prétraitée pour la détection.")  # Debug
             
             # Détection du texte
             results = self.reader.readtext(processed_roi)
+            print(f"Résultats de la détection : {results}")  # Debug
             
             # Filtrage des résultats
             for (bbox, text, prob) in results:
+                print(f"Texte détecté : {text}, Probabilité : {prob}")  # Debug
                 # Vérifier si le texte contient uniquement des chiffres
                 if text.isdigit() and prob > self.min_confidence:
+                    print(f"Numéro détecté : {text}")  # Debug
                     return text
                     
+            print("Aucun numéro valide détecté.")  # Debug
             return None
 
         except Exception as e:

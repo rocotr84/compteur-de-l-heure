@@ -2,74 +2,117 @@ import cv2
 import numpy as np
 import os
 
-def calculer_offset(reference_rgb, detected_rgb):
+def compute_global_offset(reference_colors, detected_colors):
     """
-    Calcule l'offset à appliquer (en RGB) pour corriger la couleur détectée vers la couleur de référence.
+    Calcule l'offset global (en RGB) à appliquer sur l'image à partir de 6 paires de couleurs.
     
-    Paramètres :
-      reference_rgb (tuple) : La couleur de référence en RGB (ex. (37, 146, 202)).
-      detected_rgb (tuple)  : La couleur détectée en RGB (ex. (3, 58, 97)).
+    Args:
+        reference_colors (list of tuple): Liste des 6 couleurs de référence en RGB.
+        detected_colors (list of tuple): Liste des 6 couleurs mesurées en RGB.
     
-    Retourne :
-      offset_rgb (np.array) : L'offset par canal en RGB.
+    Returns:
+        np.array: Offset global moyen par canal (R, G, B) sous forme d'un tableau numpy.
     """
-    ref = np.array(reference_rgb, dtype=np.int16)
-    det = np.array(detected_rgb, dtype=np.int16)
-    offset_rgb = ref - det
-    return offset_rgb
+    # Convertir les listes en tableaux (forme (6, 3))
+    ref = np.array(reference_colors, dtype=np.int16)
+    det = np.array(detected_colors, dtype=np.int16)
+    
+    # Calculer l'offset pour chaque patch
+    offsets = ref - det  # Chaque ligne correspond à (offset_R, offset_G, offset_B)
+    
+    # Calculer l'offset moyen par canal
+    global_offset = np.mean(offsets, axis=0)
+    
+    # Arrondir pour obtenir des valeurs entières
+    return np.round(global_offset).astype(np.int16)
 
-def appliquer_offset(image, offset_rgb):
+def apply_offset(image, offset_rgb):
     """
-    Applique l'offset à l'image pour corriger la couleur.
+    Applique un offset couleur à toute l'image.
     
-    Paramètres :
-      image (np.array)      : Image chargée (en BGR, typiquement en uint8).
-      offset_rgb (np.array) : Offset calculé en RGB.
+    Args:
+        image (np.array): Image en BGR (typique de OpenCV).
+        offset_rgb (np.array): Offset en RGB à appliquer.
     
-    Retourne :
-      image_corrigee (np.array) : L'image corrigée.
+    Returns:
+        np.array: Image corrigée.
     """
-    # Conversion de l'offset en RGB vers l'offset en BGR (OpenCV utilise le format BGR)
-    offset_bgr = offset_rgb[::-1]  # Inverse l'ordre (R, G, B) -> (B, G, R)
+    # Conversion de l'offset depuis RGB vers BGR (inverser l'ordre)
+    offset_bgr = offset_rgb[::-1]
     
-    # Conversion de l'image en int16 pour éviter les débordements lors de l'addition
+    # Conversion de l'image en int16 pour éviter les dépassements
     image_int = image.astype(np.int16)
-    # Application de l'offset à chaque pixel
-    image_corrigee = image_int + offset_bgr
-    # On restreint les valeurs à l'intervalle [0, 255] et on repasse en uint8
-    image_corrigee = np.clip(image_corrigee, 0, 255).astype(np.uint8)
-    return image_corrigee
+    
+    # Appliquer l'offset (broadcasting sur tous les pixels)
+    corrected = image_int + offset_bgr
+    
+    # Reconvertir dans l'intervalle [0, 255] en uint8
+    corrected = np.clip(corrected, 0, 255).astype(np.uint8)
+    return corrected
 
 if __name__ == '__main__':
-    # Couleurs données en RGB
-    reference_rgb = (37, 146, 202)
-    detected_rgb  = (3, 58, 97)
+    # -------------------------------
+    # 1. Définir les couleurs de calibration
+    # -------------------------------
+    # Exemple : remplacez ces valeurs par vos mesures réelles.
+    # Couleurs de référence (en RGB) attendues pour chacun des 6 patches.
+    reference_colors = [
+        (244, 133, 176),
+        (199, 10, 38),
+        (43, 10, 17),
+        (224, 172, 27),
+        (18, 137, 97),
+        (44, 58, 147),
+        (38, 152, 212),
+        (9, 11, 10)
+    ]
     
-    # Calcul de l'offset en RGB
-    offset_rgb = calculer_offset(reference_rgb, detected_rgb)
-    print("Offset RGB calculé :", offset_rgb)  # Affichera : [34 88 105]
+    # Couleurs détectées (en RGB) mesurées sur l'image de calibration.
+    detected_colors = [
+        (167, 73, 126),
+        (106, 0, 22),
+        (20, 1, 7),
+        (173, 133, 9),
+        (173, 133, 9),
+        (14, 16, 93),
+        (6, 76, 128),
+        (1, 1, 3)
+    ]
     
-    # Chemin de l'image à modifier.
-    # Veillez à bien indiquer l'extension (ici, on prend l'exemple d'une image .jpg)
-    image_path = r"C:\Users\victo\Desktop\camera detection_2\compteur-de-l-heure\assets\photos\camera4K\Toute les couleurs\frame_0350.jpg"
+    # Calcul de l'offset global en RGB
+    offset_rgb = compute_global_offset(reference_colors, detected_colors)
+    print("Offset RGB global calculé :", offset_rgb)
     
-    # Chargement de l'image
+    # -------------------------------
+    # 2. Charger l'image à corriger
+    # -------------------------------
+    # Spécifiez le chemin de l'image que vous souhaitez corriger.
+    image_path = r"C:\Users\victo\Desktop\camera detection_2\compteur-de-l-heure\assets\photos\camera4K\Toute les couleurs\frame_0352.jpg"
     image = cv2.imread(image_path)
     if image is None:
         print("Erreur lors du chargement de l'image. Vérifiez le chemin et l'extension.")
     else:
-        # Application de l'offset pour corriger l'image
-        image_corrigee = appliquer_offset(image, offset_rgb)
+        # -------------------------------
+        # 3. Appliquer l'offset global à l'image
+        # -------------------------------
+        corrected_image = apply_offset(image, offset_rgb)
         
-        # Sauvegarder l'image corrigée dans le même dossier avec le nom "correction_im"
-        dossier = os.path.dirname(image_path)
-        extension = os.path.splitext(image_path)[1]  # Récupère l'extension (ex. ".jpg")
-        nouveau_chemin = os.path.join(dossier, "correction_im" + extension)
-        cv2.imwrite(nouveau_chemin, image_corrigee)
-        print("Image corrigée sauvegardée sous :", nouveau_chemin)
+        # -------------------------------
+        # 4. Sauvegarder l'image corrigée
+        # -------------------------------
+        # Sauvegarde dans le même dossier sous le nom "correction_im" en conservant l'extension d'origine.
+        folder = os.path.dirname(image_path)
+        extension = os.path.splitext(image_path)[1]  # Par exemple ".jpg" ou ".png"
+        new_filename = "correction_im" + extension
+        new_path = os.path.join(folder, new_filename)
         
-        # Affichage de l'image originale et de l'image corrigée
+        if cv2.imwrite(new_path, corrected_image):
+            print("Image corrigée sauvegardée sous :", new_path)
+        else:
+            print("Erreur lors de la sauvegarde de l'image.")
+        
+        # Optionnel : affichage des images
         cv2.imshow("Image Originale", image)
-        cv2.imshow("Image Corrigee", image_corrigee)
+        cv2.imshow("Image Corrigee", corrected_image)
         cv2.waitKey(0)
         cv2.destroyAllWindows()

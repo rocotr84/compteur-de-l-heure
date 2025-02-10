@@ -57,26 +57,32 @@ if __name__ == '__main__':
     # -------------------------------
     # Couleurs de référence (attendues) en RGB
     reference_colors = [
-        (244, 133, 176),
-        (199, 10, 38),
-        (43, 10, 17),
-        (224, 172, 27),
-        (18, 137, 97),
-        (44, 58, 147),
-        (38, 152, 212),
-        (9, 11, 10)
+        (170, 136, 235),
+        (34, 16, 190),
+        (20, 22, 48),
+        (27, 175, 215),
+        (83, 144, 16),
+        (103, 124, 9),
+        (146, 75, 48),
+        (190, 161, 35),
+        (10, 28, 9),
+        (202, 204, 201)
     ]
+
+
 
     # Couleurs détectées sur l'image en RGB
     detected_colors = [
-        (167, 73, 126),
-        (106, 0, 22),
-        (20, 1, 7),
-        (173, 133, 9),
-        (173, 133, 9),
-        (14, 16, 93),
-        (6, 76, 128),
-        (1, 1, 3)
+        (120, 78, 157),
+        (23, 9, 104),
+        (11, 11, 20),
+        (13, 141, 169),
+        (39, 99, 4),
+        (53, 81, 1),
+        (92, 29, 15),
+        (117, 91, 6),
+        (3, 21, 1),
+       (181, 176, 173)
     ]
 
     # Calcul de la matrice de transformation
@@ -90,7 +96,7 @@ if __name__ == '__main__':
     # -------------------------------
     # 2. Charger l'image à corriger
     # -------------------------------
-    image_path = r"C:\Users\victo\Desktop\camera detection_2\compteur-de-l-heure\assets\photos\camera4K\Toute les couleurs\frame_0354.jpg"
+    image_path = r"C:\Users\victo\Desktop\camera detection_2\compteur-de-l-heure\assets\photos\camera4K2\pink\Face\frame_0222.jpg"
     image = cv2.imread(image_path)
     
     if image is None:

@@ -1,11 +1,34 @@
 import cv2
 import numpy as np
+from pathlib import Path
 
 # Variables globales pour la gestion des rectangles
 rect_start = None
 rect_end = None
 drawing = False
 rectangles = []  # Liste pour stocker les coordonnées des rectangles
+
+# Nom du dossier du projet à rechercher
+PROJECT_NAME = "compteur-de-l-heure"
+
+def find_project_root(current_path: Path, project_name: str) -> Path:
+    """
+    Remonte dans l'arborescence à partir de current_path jusqu'à trouver un dossier
+    dont le nom correspond à project_name.
+    """
+    for parent in current_path.parents:
+        if parent.name == project_name:
+            return parent
+    raise Exception(f"Répertoire racine du projet '{project_name}' non trouvé.")
+
+# Récupérer le chemin absolu du fichier courant, et trouver le répertoire racine du projet
+current_file = Path(__file__).resolve()
+project_root = find_project_root(current_file, PROJECT_NAME)
+
+# Construire le chemin de l'image en se basant sur la racine trouvée
+image_path = str(project_root / "assets" / "photos" / "136_2401" / "couleurs" / "IMG_3697.jpg")
+
+print("Chemin de l'image :", image_path)
 
 # Fonction de callback pour la sélection de la zone avec la souris
 def select_region(event, x, y, flags, param):
@@ -69,8 +92,6 @@ def get_average_rgb(image, rectangles):
 
 if __name__ == '__main__':
     # Charger l'image
-    #image_path = r"C:\Users\victo\Desktop\camera detection_2\compteur-de-l-heure\assets\photos\136_2401\couleurs\IMG_3697.jpg"
-    image_path = r"C:\Users\victo\Desktop\camera detection_2\compteur-de-l-heure\assets\photos\camera4K\Toute les couleurs\correction_im_v2.jpg"
     image = cv2.imread(image_path)
 
     if image is None:

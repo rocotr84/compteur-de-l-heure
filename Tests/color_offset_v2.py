@@ -46,10 +46,10 @@ if __name__ == '__main__':
     # 1. Définir les couleurs de calibration
     # -------------------------------
     # Couleur de référence (blanc attendu) en RGB
-    reference_color = (202, 205, 203)
+    detected_color = (202, 205, 203)
 
     # Couleur détectée sur l'image en RGB
-    detected_color = (175, 178, 183)  # Exemple de couleur détectée
+    reference_color = (145, 108, 103)  # Exemple de couleur détectée
 
     # Calcul de l'offset de couleur
     color_offset = compute_color_offset(reference_color, detected_color)
@@ -58,9 +58,11 @@ if __name__ == '__main__':
     # -------------------------------
     # 2. Charger l'image à corriger
     # -------------------------------
-    image_path = r"C:\Users\victo\Desktop\camera detection_2\compteur-de-l-heure\assets\photos\camera4K\Toute les couleurs\frame_0354.jpg"
+    #image_path = r"C:\Users\victo\Desktop\camera detection_2\compteur-de-l-heure\assets\photos\camera4K\Toute les couleurs\frame_0354.jpg"
+    image_path = r"C:\Users\victo\Desktop\IMG_3661.png"
     image = cv2.imread(image_path)
     
+
     if image is None:
         print("Erreur : Impossible de charger l'image. Vérifie le chemin.")
     else:

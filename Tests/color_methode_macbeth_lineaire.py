@@ -140,7 +140,7 @@ def main():
         [175, 54, 60],
         [231, 199, 31],
         [187, 86, 149],
-        [8, 133, 161],
+         [8, 133, 161],
         [243, 243, 242],
         [200, 200, 200],
         [160, 160, 160],
@@ -165,8 +165,8 @@ def main():
     image_corrigee_bgr = cv2.cvtColor(image_corrigee, cv2.COLOR_RGB2BGR)
     
     # Affichage de l'image originale et de l'image corrigée
-    cv2.imshow("Image Originale", image)
-    cv2.imshow("Image Corrigée", image_corrigee_bgr)
+    #cv2.imshow("Image Originale", image)
+    #cv2.imshow("Image Corrigée", image_corrigee_bgr)
     
     # Redimensionner l'image corrigée pour avoir une largeur de 1800 pixels
     hauteur, largeur = image_corrigee_bgr.shape[:2]

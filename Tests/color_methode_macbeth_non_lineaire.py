@@ -217,8 +217,8 @@ def main():
     image_corrigee_bgr = cv2.cvtColor(image_corrigee, cv2.COLOR_RGB2BGR)
     
     # Affichage des images
-    cv2.imshow("Image Originale", image)
-    cv2.imshow("Image Corrigée (Non Linéaire)", image_corrigee_bgr)
+    #cv2.imshow("Image Originale", image)
+    #cv2.imshow("Image Corrigée (Non Linéaire)", image_corrigee_bgr)
     
     # Redimensionner l'image corrigée pour une largeur de 1800 pixels
     hauteur, largeur = image_corrigee_bgr.shape[:2]

@@ -46,10 +46,10 @@ if __name__ == '__main__':
     # 1. Définir les couleurs de calibration
     # -------------------------------
     # Couleur de référence (blanc attendu) en RGB
-    detected_color = (202, 205, 203)
+    detected_color = (204, 207, 205)
 
     # Couleur détectée sur l'image en RGB
-    reference_color = (145, 108, 103)  # Exemple de couleur détectée
+    reference_color = (154, 157, 155)  # Exemple de couleur détectée
 
     # Calcul de l'offset de couleur
     color_offset = compute_color_offset(reference_color, detected_color)

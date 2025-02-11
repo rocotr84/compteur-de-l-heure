@@ -26,7 +26,10 @@ current_file = Path(__file__).resolve()
 project_root = find_project_root(current_file, PROJECT_NAME)
 
 # Construire le chemin de l'image en se basant sur la racine trouvée
-image_path = str(project_root / "assets" / "photos" / "136_2401" / "couleurs" / "IMG_3697.jpg")
+#image_path = str(project_root / "assets" / "photos" / "136_2401" / "couleurs" / "IMG_3697.jpg")
+#image_path = str(project_root / "assets" / "photos" / "camera4K" / "Toute les couleurs" / "frame_0352.jpg")
+#image_path = str(project_root / "assets" / "photos" / "136_2401" / "Red" / "Face" / "IMG_3673.jpg")
+image_path = str(project_root / "assets" / "photos" / "camera4K" / "Red" / "Face" / "frame_0181.jpg")
 
 print("Chemin de l'image :", image_path)
 

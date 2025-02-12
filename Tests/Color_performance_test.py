@@ -6,6 +6,7 @@ import time
 import psutil
 import GPUtil
 
+
 # DÃ©finir la couleur yellow en RGB et HSV
 
 defined_colors_rgb = { 
@@ -68,7 +69,7 @@ def display_image_with_rectangle(image_path):
     cv2.rectangle(img, (start_x, start_y), (end_x, end_y), (0, 255, 0), 2)
     
     # Afficher l'image
-    cv2.imshow('Image with Rectangle', img)
+    # cv2.imshow('Image with Rectangle', img)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
@@ -334,11 +335,27 @@ def analyze_images_in_folder(color, base_folder, output_csv):
 
 # Fonction principale pour analyser les images de la couleur yellow
 def analyze_yellow(base_folder, output_csv):
-    color = 'light_blue'
+    color = 'yellow'
     analyze_images_in_folder(color, base_folder, output_csv)
 
+def find_project_root(current_path: Path, project_name: str) -> Path:
+    """
+    Remonte dans l'arborescence à partir de current_path jusqu'à trouver un dossier
+    dont le nom correspond à project_name.
+    """
+    for parent in current_path.parents:
+        if parent.name == project_name:
+            return parent
+    raise Exception(f"Répertoire racine du projet '{project_name}' non trouvé.")
+
+PROJECT_NAME = "compteur-de-l-heure"
+current_file = Path(__file__).resolve()
+project_root = find_project_root(current_file, PROJECT_NAME)
+
 # Exemple d'utilisation
-base_folder = r'C:\Users\victo\Desktop\camera detection_2\compteur-de-l-heure\assets\photos\camera4K'
-output_csv = r'C:\Users\victo\Desktop\camera detection_2\compteur-de-l-heure\Tests\results.csv'
+base_folder = str(project_root / "assets" / "photos" / "camera4K2")
+output_csv = str(project_root / "Tests" / "results.csv")
+#base_folder = r'C:\Users\victo\Desktop\camera detection_2\compteur-de-l-heure\assets\photos\camera4K'
+#output_csv = r'C:\Users\victo\Desktop\camera detection_2\compteur-de-l-heure\Tests\results.csv'
 analyze_yellow(base_folder, output_csv)
 

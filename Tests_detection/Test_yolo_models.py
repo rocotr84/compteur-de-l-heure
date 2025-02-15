@@ -46,7 +46,8 @@ CSV_HEADER = [
     'Detection %', 
     'Total Detection Time (s)', 
     'Average Detection Time (s)',
-    'Number of Persons Detected'
+    'Number of Persons Detected',
+    'Dernier Dossier'
 ]
 
 def find_project_root(current_path: Path, project_name: str) -> Path:
@@ -154,8 +155,7 @@ if __name__ == '__main__':
     if not liste_images:
         print("Aucune image trouvée dans", paths['images'])
         exit(1)
-    chemin_image = str(liste_images[1])
-    print("Image utilisée:", chemin_image)
+    print(f"Nombre d'images trouvées: {len(liste_images)}")
 
     # Boucle sur chaque modèle
     for model_name in YOLO_MODELS:
@@ -176,35 +176,43 @@ if __name__ == '__main__':
 
             # Faire une détection "à vide" pour le warmup
             print("Warmup du modèle...")
-            _ = model(cv2.imread(chemin_image))
+            _ = model(cv2.imread(str(liste_images[0])))
             torch.cuda.synchronize() if torch.cuda.is_available() else None
 
-            # Effectuer la vraie détection
-            confidence, detection_time, nb_persons = detect_person_yolo(
-                chemin_image, 
-                model, 
-                confidence_threshold=CONFIDENCE_THRESHOLD
-            )
-            
-            print(f"Temps de détection: {detection_time:.4f} secondes")
-            print(f"Confiance: {confidence:.2f}%")
-            print(f"Nombre de personnes détectées: {nb_persons}")
+            # Boucle sur chaque image
+            for image_path in liste_images:
+                print(f"\nTraitement de l'image: {image_path.name}")
+                
+                # Effectuer la détection
+                confidence, detection_time, nb_persons = detect_person_yolo(
+                    str(image_path), 
+                    model, 
+                    confidence_threshold=CONFIDENCE_THRESHOLD
+                )
+                
+                print(f"Temps de détection: {detection_time:.4f} secondes")
+                print(f"Confiance: {confidence:.2f}%")
+                print(f"Nombre de personnes détectées: {nb_persons}")
 
-            # Stocker les résultats dans le fichier CSV
-            output_csv_path = Path(paths['results'])
-            file_exists = output_csv_path.exists()
-            
-            with open(paths['results'], mode='a', newline='') as file:
-                writer = csv.writer(file)
-                if not file_exists:
-                    writer.writerow(CSV_HEADER)
-                writer.writerow([
-                    "dur",
-                    model_name.replace('.pt', ''),
-                    f"{confidence:.2f}",
-                    f"{detection_time:.4f}",
-                    nb_persons
-                ])
+                # Récupérer le nom du dernier dossier
+                last_folder_name = image_path.parent.name
+                print(f"nom du dernier dossier: {last_folder_name} ")
+                # Stocker les résultats dans le fichier CSV
+                output_csv_path = Path(paths['results'])
+                file_exists = output_csv_path.exists()
+                
+                with open(str(output_csv_path), mode='a', newline='') as file:
+                    writer = csv.writer(file)
+                    if not file_exists:
+                        writer.writerow(CSV_HEADER)
+                    writer.writerow([
+                        image_path.stem,
+                        model_name.replace('.pt', ''),
+                        f"{confidence:.2f}",
+                        f"{detection_time:.4f}",
+                        nb_persons,
+                        last_folder_name
+                    ])
                 
         except Exception as e:
             print(f"Erreur lors du traitement du modèle {model_name}: {str(e)}")

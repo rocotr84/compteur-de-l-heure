@@ -4,8 +4,9 @@ import cv2
 
 
 # Charger le modèle YOLOv8
-model = YOLO("yolo11n.pt")  # Modèle léger pour la détection
 
+
+model3 = YOLO("yolov9e.pt")
 # Définir la ligne fixe (exemple : ligne horizontale au centre de l'image)
 line_position = 450  # Position verticale de la ligne (pixels)
 line_start = (0, line_position)  # Début de la ligne (x=0)

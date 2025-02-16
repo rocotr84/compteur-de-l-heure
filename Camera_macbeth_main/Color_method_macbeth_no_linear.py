@@ -99,47 +99,74 @@ def appliquer_correction_non_lineaire(image, params):
     pixels_corriges = np.clip(pixels_corriges, 0, 1)
     return (pixels_corriges.reshape(h, w, 3) * 255).astype(np.uint8)
 
-def corriger_image(image, cache_file, detect_squares):
-    """
-    Corrige les couleurs d'une image en utilisant une charte Macbeth.
+def main():
+    # Chemin d'accès à l'image contenant la charte Macbeth
+    image_path = r"D:\Windsuft programme\compteur-de-l-heure\assets\photos\Macbeth\IMG_3673.JPG"
+    image_corrige_path = r"D:\Windsuft programme\compteur-de-l-heure\Camera_macbeth_main\image_co.jpg"
+    cache_file = r"D:\Windsuft programme\compteur-de-l-heure\Camera_macbeth_main\macbeth_cache.json"
+    detect_squares = True
     
-    Args:
-        image (np.array): Image d'entrée en format BGR
-        cache_file (str): Chemin vers le fichier de cache
-        detect_squares (bool): Si True, détecte les carrés, sinon utilise le cache
+    # Chargement de l'image (OpenCV charge en BGR)
+    image = cv2.imread(image_path)
+    if image is None:
+        print("Erreur : impossible de charger l'image.")
+        sys.exit(1)
     
-    Returns:
-        np.array: Image corrigée en format BGR
-    """
     # Récupération des couleurs moyennes des 24 patchs via get_average_colors (en BGR)
-    measured_colors = get_average_colors(image, cache_file=cache_file, detect_squares=detect_squares)
+    measured_colors = get_average_colors(image_path, cache_file=cache_file, detect_squares=detect_squares)
     measured_colors = np.array(measured_colors, dtype=np.float32)
-
-    # Définition des couleurs cibles standard de la charte Macbeth en BGR
+    print("Couleurs moyennes (BGR) :", measured_colors)
+    
+    # Définition des couleurs cibles standard de la charte Macbeth en BGR.
     target_colors = np.array([
-        [68, 82, 115], [130, 150, 194], [157, 122, 98], [67, 108, 87], [177, 128, 133],
-        [170, 189, 103], [44, 126, 214], [166, 91, 80], [99, 90, 193], [108, 60, 94],
-        [64, 188, 157], [46, 163, 224], [150, 61, 56], [73, 148, 70], [60, 54, 175],
-        [31, 199, 231], [149, 86, 187], [161, 133, 8], [242, 243, 243], [200, 200, 200],
-        [160, 160, 160], [121, 122, 122], [85, 85, 85], [52, 52, 52]
+        [68, 82, 115],
+        [130, 150, 194],
+        [157, 122, 98],
+        [67, 108, 87],
+        [177, 128, 133],
+        [170, 189, 103],
+        [44, 126, 214],
+        [166, 91, 80],
+        [99, 90, 193],
+        [108, 60, 94],
+        [64, 188, 157],
+        [46, 163, 224],
+        [150, 61, 56],
+        [73, 148, 70],
+        [60, 54, 175],
+        [31, 199, 231],
+        [149, 86, 187],
+        [161, 133, 8],
+        [242, 243, 243],
+        [200, 200, 200],
+        [160, 160, 160],
+        [121, 122, 122],
+        [85, 85, 85],
+        [52, 52, 52]
     ], dtype=np.float32)
-
+    
     if measured_colors.shape[0] != target_colors.shape[0]:
-        raise ValueError("Erreur : Le nombre de patchs mesurés ne correspond pas au nombre de couleurs cibles (24).")
-
+        print("Erreur : Le nombre de patchs mesurés ne correspond pas au nombre de couleurs cibles (24).")
+        sys.exit(1)
+    
     # Normalisation des couleurs dans l'intervalle [0,1]
     measured_norm = measured_colors / 255.0
     target_norm = target_colors / 255.0
-
+    
     # Calibration non linéaire pour obtenir les paramètres optimaux
     params = calibrer_transformation_non_lineaire(measured_norm, target_norm)
-
-    # Application de la correction à l'image complète (en BGR) et retour
-    return appliquer_correction_non_lineaire(image, params)
+    print("Paramètres de correction non linéaire :")
+    print(params)
+    
+    # Application de la correction à l'image complète (en BGR) et enregistrement
+    image_corrigee = appliquer_correction_non_lineaire(image, params)
+    cv2.imwrite(image_corrige_path, image_corrigee)
+    
+    # Affichage de l'image corrigée
+    cv2.imshow("Image Corrigée Non Linéaire (BGR)", image_corrigee)
+    print("Appuyez sur une touche pour fermer la fenêtre...")
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
 if __name__ == "__main__":
-
-    image = sys.argv[1]
-    cache_file = sys.argv[2]
-    detect_squares = sys.argv[3]
-    corriger_image(image, cache_file, detect_squares)
+    main()

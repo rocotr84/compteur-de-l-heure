@@ -17,25 +17,18 @@ def order_points(pts):
     rect[3] = pts[np.argmax(diff)]  # bas-gauche
     return rect
 
-def detect_macbeth_in_scene(image_path, detect_squares=True, cache_file="macbeth_cache.json"):
+def detect_macbeth_in_scene(image, detect_squares, cache_file):
     """
     Détecte la charte Macbeth dans l'image, corrige la perspective,
     et détecte les carrés internes.
     
     Paramètres :
-      - image_path : chemin vers l'image source.
-      - detect_squares : si True, recherche et stocke les coordonnées des carrés.
-                         si False, tente de récupérer ces coordonnées depuis le fichier cache.
-      - cache_file : nom du fichier de cache pour stocker les données des carrés.
-    
-    Renvoie :
-      - warped : l'image redressée (la charte).
-      - squares : une liste de tuples (x, y, w, h) définissant les zones des carrés.
+      - image : image source en format BGR (np.array)
+      - detect_squares : si True, recherche et stocke les coordonnées des carrés
+      - cache_file : nom du fichier de cache pour stocker les données des carrés
     """
-    # Lecture de l'image
-    image = cv2.imread(image_path)
     if image is None:
-        raise FileNotFoundError(f"Impossible de lire l'image : {image_path}")
+        raise ValueError("Image invalide")
 
     # Conversion en HSV et création d'un masque pour le fond noir
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
@@ -131,14 +124,19 @@ def detect_macbeth_in_scene(image_path, detect_squares=True, cache_file="macbeth
 
     return warped, squares
 
-def get_average_colors(image_path, cache_file, detect_squares):
+def get_average_colors(image, cache_file, detect_squares):
     """
-    Pour chaque carré détecté (ou chargé depuis le cache) dans l'image,
-    calcule et retourne la couleur moyenne en format BGR.
+    Pour chaque carré détecté dans l'image, calcule et retourne la couleur moyenne en BGR.
     
-    Renvoie une liste de tuples (B, G, R) pour chaque carré.
+    Args:
+        image (np.array): Image source en format BGR
+        cache_file (str): Chemin vers le fichier de cache
+        detect_squares (bool): Si True, détecte les carrés, sinon utilise le cache
+    
+    Returns:
+        list: Liste de tuples (B, G, R) pour chaque carré
     """
-    warped, squares = detect_macbeth_in_scene(image_path, detect_squares=detect_squares, cache_file=cache_file)
+    warped, squares = detect_macbeth_in_scene(image, detect_squares=detect_squares, cache_file=cache_file)
     avg_colors = []
     for (x, y, w, h) in squares:
         roi = warped[y:y+h, x:x+w]
@@ -146,18 +144,4 @@ def get_average_colors(image_path, cache_file, detect_squares):
         avg_colors.append((int(mean_bgr[0]), int(mean_bgr[1]), int(mean_bgr[2])))
     avg_colors.reverse()
     return avg_colors
-
-
-#if __name__ == "__main__":
-
-    #Pour tester la fonction uniquement
-    image_path = r"D:\Windsuft programme\compteur-de-l-heure\assets\photos\Macbeth\IMG_3673.JPG"
-    cache_file = r"D:\Windsuft programme\compteur-de-l-heure\Tests_color\macbeth_cache.json"
-    detect_squares = False
-
-    warped, squares = detect_macbeth_in_scene(image_path, detect_squares=detect_squares, cache_file=cache_file)
-    #print("squares :", squares)
-
-    colors = get_average_colors(image_path, cache_file=cache_file, detect_squares=detect_squares)
-    #print("Couleurs moyennes (BGR) :", colors)
 

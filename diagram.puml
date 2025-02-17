@@ -86,14 +86,18 @@ package "Camera_macbeth_main" {
     }
 
     package "Main" {
-        class signal_handler {
-        + sig: int
-        + frame: signal.FrameType
-        + execute(): void
+        class signal_handler #00ff00 {
+        + sig: Signal reçu
+        + frame:  Frame d'exécution courante
+        + execute(): arrêt propre du programme
     }
 
-    class setup_device {
-        + execute(): torch.device
+    class setup_device #00ff00 {
+        + execute():  torch.device: Dispositif de calcul configuré (GPU ou CPU)
+    }
+    
+    class initialize #00ff00 {
+        + execute(): Système initialisé
     }
 
     class main {
@@ -203,89 +207,91 @@ package "NumberDetector" {
     }
   }
   package "DisplayManager" {
-    class init_display {
-        + execute(): void
+    class init_display #00ff00 {
+        + execute(): Initialise le gestionnaire d'affichage
     }
 
-    class draw_person {
-        + frame: np.array
-        + person: dict
-        + execute(): void
+    class draw_person #9b59b6 {
+        + frame: Image sur laquelle dessiner (format BGR)
+        + person: Dictionnaire contenant les informations de la personne
+        + execute(): Dessine les éléments visuels pour une personne détectée
     }
 
-    class _draw_person_label {
-        + frame: np.array
-        + person: dict
-        + x1: int
-        + y1: int
-        + execute(): void
+    class _draw_person_label #9b59b6 {
+        + frame: Image sur laquelle dessiner (format BGR)
+        + person: Informations de la personne
+        + x1: Coordonnée X du coin supérieur gauche
+        + y1: Coordonnée Y du coin supérieur gauche
+        + execute():  Dessine l'étiquette d'identification de la personne
     }
 
-    class _draw_person_trajectory {
-        + frame: np.array
-        + person: dict
-        + execute(): void
+    class _draw_person_trajectory #9b59b6 {
+        + frame: Image sur laquelle dessiner (format BGR)
+        + person: Informations de la personne incluant sa trajectoire
+        + execute(): Dessine la trajectoire de déplacement de la personne
     }
 
-    class _draw_person_center {
-        + frame: np.array
-        + person: dict
-        + execute(): void
+    class _draw_person_center #9b59b6 {
+        + frame: Image sur laquelle afficher les compteurs (format BGR)
+        + person: Informations de la personne
+        ---
+        + execute(): Dessine le point central de la personne
     }
 
-    class draw_counters {
-        + frame: np.array
-        + counter: defaultdict
-        + execute(): void
+    class draw_counters #9b59b6  {
+        + frame: Image sur laquelle afficher les compteurs (format BGR)
+        + counter: Dictionnaire {valeur: nombre} des compteurs
+        + execute(): Affiche les compteurs pour chaque valeur détectée
     }
 
-    class draw_crossing_line {
-        + frame: np.array
-        + start_point: tuple
-        + end_point: tuple
-        + execute(): void
+    class draw_crossing_line #9b59b6 {
+        + frame: Image sur laquelle afficher les compteurs (format BGR)
+        + start_point: Point de début (x, y) de la ligne
+        + end_point: Point de fin (x, y) de la ligne
+        + execute(): Dessine la ligne de comptage sur l'image
     }
 
-    class draw_timer {
-        + frame: np.array
-        + execute(): float
+    class draw_timer #9b59b6 {
+        + frame: Image sur laquelle afficher le timer  (format BGR)
+        + execute():  Temps écoulé en secondes depuis le début
     }
 
-    class show_frame {
-        + frame: np.array
+    class show_frame #9b59b6 {
+        + frame: Image à afficher/enregistrer
+        ---
         + execute(): tuple[bool, float]
     }
 
     class release {
-        + execute(): void
+        + execute(): ibère les ressources utilisées par l'affichage.
     }
   }
   
-  package "DetectionHistory" {
+  package "DetectionHistory" #00ff00 {
     class init_detection_history {
-        + output_file: str
-        + execute(): void
+        + output_file: Chemin vers le fichier CSV de sortie
+        + execute(): Initialise l'historique des détections et crée/ouvre le fichier CSV de sortie
     }
 
     class update_color {
-        + person_id: int
-        + value: str
-        + execute(): void
+        + person_id: Identifiant unique du coureur
+        + value: Valeur de couleur détectée
+        + execute(): Met à jour l'historique des valeurs détectées pour un coureur
     }
 
     class get_dominant_value {
-        + person_id: int
-        + execute(): str
+        + person_id:  Identifiant unique du coureur
+        + execute(): Détermine la valeur la plus fréquente pour un coureur donné
     }
 
     class record_crossing {
-        + person_id: int
-        + elapsed_time: float
-        + execute(): void
+        + person_id: Identifiant unique du coureur
+        + elapsed_time: Temps écoulé depuis le début en secondes
+        + execute(): Enregistre le passage d'un coureur avec sa couleur dominante et le temps écoulé
     }
 
     class cleanup {
-        + execute(): void
+        + execute():  Ferme proprement le fichier CSV.
     }
 }
 }
@@ -293,14 +299,16 @@ package "NumberDetector" {
 
 ' Création des liens entre les fichiers
 
-main --> signal_handler
-main --> init_detection_history
-main --> init_video_processor
-main --> load_mask : Initialisation
-main --> setup_video_capture : Initialisation
-main --> create_tracker : Initialisation
-main --> init_display : Initialisation
-main --> setup_device : Initialisation
+initialize --> signal_handler
+initialize --> init_detection_history
+initialize --> init_video_processor
+initialize --> load_mask : Initialisation
+initialize --> setup_video_capture : Initialisation
+initialize --> create_tracker : Initialisation
+initialize --> init_display : Initialisation
+initialize --> setup_device : Initialisation
+initialize--> get_average_colors
+main --> initialize
 main --> process_frame
 main --> update_tracker
 main --> update_color

@@ -2,39 +2,58 @@ import cv2
 import numpy as np
 import easyocr
 
-# Variables globales
-reader = easyocr.Reader(['en'], gpu=True)
-min_confidence = 0.4
+# Paramètres de détection OCR
+OCR_READER = easyocr.Reader(['en'], gpu=True)
+MIN_NUMBER_CONFIDENCE = 0.4
+
+# Paramètres de prétraitement d'image
+CONTRAST_CLIP_LIMIT = 2.0
+CONTRAST_GRID_SIZE = (8, 8)
+BINARY_BLOCK_SIZE = 11
+BINARY_CONSTANT = 2
+MORPHOLOGY_KERNEL_SIZE = (2, 2)
+
+# Paramètres de la ROI
+ROI_EXPANSION_RATIO = 0.2  # Agrandissement de 20% de la zone
 
 def preprocess_roi(roi):
     """
-    Prétraite l'image pour améliorer la détection des numéros
+    Prétraite l'image pour améliorer la détection des numéros.
+    
+    Args:
+        roi (np.array): Region d'intérêt à prétraiter
+        
+    Returns:
+        np.array: Image prétraitée
     """
     # Conversion en niveaux de gris
     gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
     
     # Amélioration du contraste
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+    clahe = cv2.createCLAHE(clipLimit=CONTRAST_CLIP_LIMIT, 
+                           tileGridSize=CONTRAST_GRID_SIZE)
     gray = clahe.apply(gray)
     
     # Binarisation adaptative
     binary = cv2.adaptiveThreshold(
         gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-        cv2.THRESH_BINARY_INV, 11, 2
+        cv2.THRESH_BINARY_INV, BINARY_BLOCK_SIZE, BINARY_CONSTANT
     )
     
     # Réduction du bruit
-    kernel = np.ones((2,2), np.uint8)
+    kernel = np.ones(MORPHOLOGY_KERNEL_SIZE, np.uint8)
     binary = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel)
     
     return binary
 
 def get_number(frame, roi_coords):
     """
-    Détecte le numéro dans la ROI
+    Détecte le numéro dans la ROI.
+    
     Args:
         frame (np.array): Image complète
         roi_coords (tuple): Coordonnées de la ROI (x1, y1, x2, y2)
+        
     Returns:
         str: Numéro détecté ou None
     """
@@ -42,48 +61,52 @@ def get_number(frame, roi_coords):
         # Extraction de la ROI
         x1, y1, x2, y2 = roi_coords
         
-        # Agrandir la ROI
+        # Agrandir la ROI selon le ratio défini
         width = x2 - x1
         height = y2 - y1
         
-        # Ajustez les coordonnées pour agrandir la ROI
-        x1 = max(0, x1 - int(width * 0.2))  # Réduire x1 de 20% de la largeur
-        y1 = max(0, y1 - int(height * 0.2))  # Réduire y1 de 20% de la hauteur
-        x2 = min(frame.shape[1], x2 + int(width * 0.2))  # Augmenter x2 de 20% de la largeur
-        y2 = min(frame.shape[0], y2 + int(height * 0.2))  # Augmenter y2 de 20% de la hauteur
+        # Ajustement des coordonnées avec ROI_EXPANSION_RATIO
+        x1 = max(0, x1 - int(width * ROI_EXPANSION_RATIO))
+        y1 = max(0, y1 - int(height * ROI_EXPANSION_RATIO))
+        x2 = min(frame.shape[1], x2 + int(width * ROI_EXPANSION_RATIO))
+        y2 = min(frame.shape[0], y2 + int(height * ROI_EXPANSION_RATIO))
         
         roi = frame[y1:y2, x1:x2]
         
         if roi.size == 0:
-            print("ROI vide, aucune image à traiter.")  # Debug
+            print("[DEBUG] ROI vide, aucune image à traiter.")
             return None
 
         # Prétraitement de la ROI
         processed_roi = preprocess_roi(roi)
-        print("ROI prétraitée pour la détection.")  # Debug
+        print("[DEBUG] ROI prétraitée pour la détection.")
         
-        # Détection du texte
-        results = reader.readtext(processed_roi)
-        print(f"Résultats de la détection : {results}")  # Debug
+        # Détection du texte avec OCR_READER
+        results = OCR_READER.readtext(processed_roi)
+        print(f"[DEBUG] Résultats de la détection : {results}")
         
-        # Filtrage des résultats
+        # Filtrage des résultats selon MIN_NUMBER_CONFIDENCE
         for (bbox, text, prob) in results:
-            print(f"Texte détecté : {text}, Probabilité : {prob}")  # Debug
-            # Vérifier si le texte contient uniquement des chiffres
-            if text.isdigit() and prob > min_confidence:
-                print(f"Numéro détecté : {text}")  # Debug
+            print(f"[DEBUG] Texte détecté : {text}, Probabilité : {prob}")
+            if text.isdigit() and prob > MIN_NUMBER_CONFIDENCE:
+                print(f"[DEBUG] Numéro détecté : {text}")
                 return text
                 
-        print("Aucun numéro valide détecté.")  # Debug
+        print("[DEBUG] Aucun numéro valide détecté.")
         return None
 
     except Exception as e:
-        print(f"Erreur lors de la détection du numéro: {str(e)}")
+        print(f"[ERROR] Erreur lors de la détection du numéro: {str(e)}")
         return None
 
 def visualize_number(frame, roi_coords, number):
     """
-    Visualise le numéro détecté sur l'image
+    Visualise le numéro détecté sur l'image.
+    
+    Args:
+        frame (np.array): Image sur laquelle dessiner
+        roi_coords (tuple): Coordonnées de la ROI (x1, y1, x2, y2)
+        number (str): Numéro détecté
     """
     if number is None:
         return

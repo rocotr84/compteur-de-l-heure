@@ -2,9 +2,9 @@ import cv2
 import numpy as np
 from color_weighting import get_weighted_color_probabilities, update_color_timestamp
 
-# Définition des plages de couleurs HSV
-# Format: ((teinte_min, saturation_min, valeur_min), (teinte_max, saturation_max, valeur_max))
-color_ranges = {
+# Définition des plages de couleurs HSV pour chaque couleur reconnue
+# Format: ((hue_min, saturation_min, value_min), (hue_max, saturation_max, value_max))
+color_detection_ranges = {
     "noir": ((0, 0, 0), (180, 255, 50)),
     "blanc": ((0, 0, 200), (180, 30, 255)),
     "rouge_fonce": ((0, 50, 50), (10, 255, 255)),
@@ -16,19 +16,19 @@ color_ranges = {
     "vert_clair": ((40, 50, 50), (80, 255, 255))
 }
 
-def get_dominant_color(frame, roi_coords):
+def get_dominant_color(frame_raw, detection_zone_coords):
     """
     Détecte la couleur dominante dans une région d'intérêt (ROI) de l'image.
     
     Le processus comprend :
-    1. Extraction de la ROI
+    1. Extraction de la zone de détection
     2. Conversion en espace colorimétrique HSV
     3. Détection des pixels dans chaque plage de couleur
     4. Application des pondérations pour déterminer la couleur dominante
     
     Args:
-        frame (np.array): Image complète au format BGR
-        roi_coords (tuple): Coordonnées de la ROI sous forme (x1, y1, x2, y2)
+        frame_raw (np.array): Image complète au format BGR
+        detection_zone_coords (tuple): Coordonnées de la zone (x1, y1, x2, y2)
     
     Returns:
         str: Nom de la couleur dominante ou "inconnu" en cas d'échec
@@ -37,28 +37,31 @@ def get_dominant_color(frame, roi_coords):
         La fonction met à jour l'horodatage de la couleur détectée via update_color_timestamp
     """
     try:
-        x1, y1, x2, y2 = roi_coords
-        roi = frame[y1:y2, x1:x2]
+        zone_x1, zone_y1, zone_x2, zone_y2 = detection_zone_coords
+        frame_detection_zone = frame_raw[zone_y1:zone_y2, zone_x1:zone_x2]
         
-        if roi.size == 0:
+        if frame_detection_zone.size == 0:
             return "inconnu"
 
-        hsv_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+        frame_detection_zone_hsv = cv2.cvtColor(frame_detection_zone, cv2.COLOR_BGR2HSV)
         
-        color_counts = {}
-        for color_name, (lower, upper) in color_ranges.items():
-            lower = np.array(lower, dtype=np.uint8)
-            upper = np.array(upper, dtype=np.uint8)
-            mask = cv2.inRange(hsv_roi, lower, upper)
-            color_counts[color_name] = cv2.countNonZero(mask)
+        detected_pixels_per_color = {}
+        for color_name, (range_min, range_max) in color_detection_ranges.items():
+            hsv_min_threshold = np.array(range_min, dtype=np.uint8)
+            hsv_max_threshold = np.array(range_max, dtype=np.uint8)
+            color_detection_mask = cv2.inRange(frame_detection_zone_hsv, 
+                                            hsv_min_threshold, 
+                                            hsv_max_threshold)
+            detected_pixels_per_color[color_name] = cv2.countNonZero(color_detection_mask)
 
-        weighted_counts = get_weighted_color_probabilities(color_counts)
+        weighted_color_probabilities = get_weighted_color_probabilities(detected_pixels_per_color)
         
-        dominant_color = max(weighted_counts.items(), key=lambda x: x[1])
+        dominant_color_name, dominant_color_weight = max(weighted_color_probabilities.items(), 
+                                                       key=lambda x: x[1])
         
-        if dominant_color[1] > 0:
-            update_color_timestamp(dominant_color[0])
-            return dominant_color[0]
+        if dominant_color_weight > 0:
+            update_color_timestamp(dominant_color_name)
+            return dominant_color_name
             
         return "inconnu"
 
@@ -66,23 +69,23 @@ def get_dominant_color(frame, roi_coords):
         print(f"Erreur lors de la détection de couleur: {str(e)}")
         return "inconnu"
 
-def visualize_color(frame, roi_coords, color_name):
+def visualize_color(frame_raw, detection_zone_coords, detected_color_name):
     """
     Visualise la couleur détectée en dessinant un rectangle sur l'image.
     
     Args:
-        frame (np.array): Image sur laquelle dessiner (format BGR)
-        roi_coords (tuple): Coordonnées de la ROI sous forme (x1, y1, x2, y2)
-        color_name (str): Nom de la couleur détectée
+        frame_raw (np.array): Image sur laquelle dessiner (format BGR)
+        detection_zone_coords (tuple): Coordonnées de la zone (x1, y1, x2, y2)
+        detected_color_name (str): Nom de la couleur détectée
     
     Notes:
         Les couleurs de visualisation sont définies en BGR :
         - Couleurs spécifiques pour chaque couleur détectée
         - Gris (128, 128, 128) pour une couleur inconnue
     """
-    x1, y1, x2, y2 = roi_coords
+    zone_x1, zone_y1, zone_x2, zone_y2 = detection_zone_coords
     
-    color_bgr = {
+    visualization_colors = {
         "rouge_fonce": (0, 0, 255),
         "bleu_fonce": (255, 0, 0),
         "bleu_clair": (255, 128, 0),
@@ -95,5 +98,9 @@ def visualize_color(frame, roi_coords, color_name):
         "inconnu": (128, 128, 128)
     }
 
-    cv2.rectangle(frame, (x1, y1), (x2, y2), 
-                 color_bgr.get(color_name, (128, 128, 128)), 2) 
+    rectangle_color = visualization_colors.get(detected_color_name, (128, 128, 128))
+    cv2.rectangle(frame_raw, 
+                 (zone_x1, zone_y1), 
+                 (zone_x2, zone_y2), 
+                 rectangle_color, 
+                 2) 

@@ -9,94 +9,97 @@ from config import (
 )
 from ultralytics import YOLO
 
-def create_tracked_person(bbox, id, confidence):
+def create_tracked_person(person_bbox_coords, person_id, person_confidence):
     """
     Crée un dictionnaire représentant une personne suivie.
     
     Args:
-        bbox (tuple): Coordonnées de la boîte englobante (x1, y1, x2, y2)
-        id (int): Identifiant unique de la personne
-        confidence (float): Score de confiance de la détection
+        person_bbox_coords (tuple): Coordonnées de la boîte englobante (x1, y1, x2, y2)
+        person_id (int): Identifiant unique de la personne
+        person_confidence (float): Score de confiance de la détection
     
     Returns:
         dict: Dictionnaire contenant les informations de suivi de la personne
     """
     return {
-        'bbox': bbox,
-        'id': id,
-        'confidence': confidence,
+        'bbox': person_bbox_coords,
+        'id': person_id,
+        'confidence': person_confidence,
         'value': None,
-        'disappeared': 0,
-        'trajectory': [],
-        'crossed_line': False
+        'frames_disappeared': 0,
+        'movement_trajectory': [],
+        'has_crossed_line': False
     }
 
-def get_center(bbox):
+def get_bbox_bottom_center(person_bbox_coords):
     """
     Calcule le point milieu du bas de la bbox.
     
     Args:
-        bbox (tuple): Coordonnées de la boîte englobante (x1, y1, x2, y2)
+        person_bbox_coords (tuple): Coordonnées de la boîte englobante (x1, y1, x2, y2)
     
     Returns:
         tuple: Coordonnées (x, y) du point central bas
     """
-    x1, y1, x2, y2 = map(int, bbox)
-    bottom_center_x = x1 + (x2 - x1) // 2
-    bottom_center_y = y2
-    return (bottom_center_x, bottom_center_y)
+    bbox_x1, bbox_y1, bbox_x2, bbox_y2 = map(int, person_bbox_coords)
+    center_x = bbox_x1 + (bbox_x2 - bbox_x1) // 2
+    center_y = bbox_y2
+    return (center_x, center_y)
 
-def update_person_position(person, bbox):
+def update_person_position(person_data, person_bbox_coords):
     """
     Met à jour la position d'une personne et maintient sa trajectoire.
     
     Args:
-        person (dict): Dictionnaire de la personne à mettre à jour
-        bbox (tuple): Nouvelles coordonnées de la boîte englobante
-    
+        person_data (dict): Dictionnaire de la personne à mettre à jour
+        person_bbox_coords (tuple): Nouvelles coordonnées de la boîte englobante
+           
     Notes:
         Conserve uniquement les 30 dernières positions
     """
-    person['bbox'] = bbox
-    center = get_center(bbox)
-    person['trajectory'].append(center)
-    if len(person['trajectory']) > 30:
-        person['trajectory'].pop(0)
+    person_data['bbox'] = person_bbox_coords
+    bbox_center = get_bbox_bottom_center(person_bbox_coords)
+    person_data['movement_trajectory'].append(bbox_center)
+    if len(person_data['movement_trajectory']) > 30:
+        person_data['movement_trajectory'].pop(0)
 
-def check_line_crossing(person, line_start, line_end):
+def check_line_crossing(person_data, counting_line_start, counting_line_end):
     """
     Vérifie si la personne traverse la ligne définie.
     
     Args:
-        person (dict): Dictionnaire de la personne à vérifier
-        line_start (tuple): Point de départ de la ligne (x, y)
-        line_end (tuple): Point d'arrivée de la ligne (x, y)
-    
+        person_data (dict): Dictionnaire de la personne à vérifier
+        counting_line_start (tuple): Point de départ de la ligne (x, y)
+        counting_line_end (tuple): Point d'arrivée de la ligne (x, y)
+            
     Returns:
         bool: True si la personne traverse la ligne, False sinon
     """
-    if len(person['trajectory']) < 2 or person['crossed_line']:
+    if len(person_data['movement_trajectory']) < 2 or person_data['has_crossed_line']:
         return False
 
-    p1 = person['trajectory'][-2]
-    p2 = person['trajectory'][-1]
+    trajectory_point_prev = person_data['movement_trajectory'][-2]
+    trajectory_point_curr = person_data['movement_trajectory'][-1]
 
-    def ccw(A, B, C):
+    def is_counterclockwise(point_1, point_2, point_3):
         """
-        Vérifie si les points A, B, C sont dans le sens antihoraire.
+        Vérifie si trois points forment un virage dans le sens antihoraire.
         
         Args:
-            A, B, C (tuple): Points à vérifier (x, y)
+            point_1, point_2, point_3 (tuple): Points à vérifier (x, y)
         Returns:
             bool: True si les points sont en sens antihoraire
         """
-        return (C[1] - A[1]) * (B[0] - A[0]) > (B[1] - A[1]) * (C[0] - A[0])
+        return (point_3[1] - point_1[1]) * (point_2[0] - point_1[0]) > \
+               (point_2[1] - point_1[1]) * (point_3[0] - point_1[0])
 
-    intersect = ccw(p1, line_start, line_end) != ccw(p2, line_start, line_end) and \
-                ccw(p1, p2, line_start) != ccw(p1, p2, line_end)
+    line_crossing_detected = is_counterclockwise(trajectory_point_prev, counting_line_start, counting_line_end) != \
+                           is_counterclockwise(trajectory_point_curr, counting_line_start, counting_line_end) and \
+                           is_counterclockwise(trajectory_point_prev, trajectory_point_curr, counting_line_start) != \
+                           is_counterclockwise(trajectory_point_prev, trajectory_point_curr, counting_line_end)
 
-    if intersect:
-        person['crossed_line'] = True
+    if line_crossing_detected:
+        person_data['has_crossed_line'] = True
         return True
     return False
 
@@ -108,21 +111,21 @@ def create_tracker():
         dict: État initial du tracker avec modèle YOLO chargé
     """
     return {
-        'next_id': 1,
-        'persons': {},
-        'counter': defaultdict(int),
-        'model': YOLO(modele_path),
-        'crossed_ids': set(),
-        'id_mapping': {}
+        'next_person_id': 1,
+        'active_tracked_persons': {},
+        'line_crossing_counter': defaultdict(int),
+        'person_detection_model': YOLO(modele_path),
+        'persons_crossed_line': set(),
+        'bytetrack_to_internal_ids': {}
     }
 
-def update_tracker(tracker_state, frame):
+def update_tracker(tracker_state, frame_raw):
     """
     Met à jour l'état du tracker avec une nouvelle frame.
     
     Args:
         tracker_state (dict): État actuel du tracker
-        frame (np.array): Image à analyser
+        frame_raw (np.array): Image à analyser
     
     Returns:
         list: Liste des personnes actuellement suivies
@@ -131,8 +134,8 @@ def update_tracker(tracker_state, frame):
         Utilise ByteTrack pour le suivi et gère la disparition des personnes
         après MAX_DISAPPEAR_FRAMES frames
     """
-    results = tracker_state['model'].track(
-        source=frame,
+    detection_results = tracker_state['person_detection_model'].track(
+        source=frame_raw,
         persist=True,
         tracker=bytetrack_path,
         classes=0,
@@ -141,41 +144,41 @@ def update_tracker(tracker_state, frame):
         verbose=False
     )
 
-    if results and len(results) > 0 and results[0].boxes.id is not None:
-        boxes = results[0].boxes.xyxy.cpu().numpy()
-        bytetrack_ids = results[0].boxes.id.cpu().numpy()
+    if detection_results and len(detection_results) > 0 and detection_results[0].boxes.id is not None:
+        detected_bboxes = detection_results[0].boxes.xyxy.cpu().numpy()
+        detected_bytetrack_ids = detection_results[0].boxes.id.cpu().numpy()
         
-        current_ids = set()
+        active_person_ids = set()
         
-        for box, bytetrack_id in zip(boxes, bytetrack_ids):
-            bytetrack_id = int(bytetrack_id)
+        for person_bbox, bytetrack_person_id in zip(detected_bboxes, detected_bytetrack_ids):
+            bytetrack_person_id = int(bytetrack_person_id)
             
-            if bytetrack_id not in tracker_state['id_mapping']:
-                tracker_state['id_mapping'][bytetrack_id] = tracker_state['next_id']
-                tracker_state['next_id'] += 1
+            if bytetrack_person_id not in tracker_state['bytetrack_to_internal_ids']:
+                tracker_state['bytetrack_to_internal_ids'][bytetrack_person_id] = tracker_state['next_person_id']
+                tracker_state['next_person_id'] += 1
             
-            sequential_id = tracker_state['id_mapping'][bytetrack_id]
+            internal_person_id = tracker_state['bytetrack_to_internal_ids'][bytetrack_person_id]
             
-            if sequential_id in tracker_state['crossed_ids']:
+            if internal_person_id in tracker_state['persons_crossed_line']:
                 continue
                 
-            current_ids.add(sequential_id)
+            active_person_ids.add(internal_person_id)
             
-            if sequential_id not in tracker_state['persons']:
-                tracker_state['persons'][sequential_id] = create_tracked_person(box, sequential_id, 1.0)
+            if internal_person_id not in tracker_state['active_tracked_persons']:
+                tracker_state['active_tracked_persons'][internal_person_id] = create_tracked_person(person_bbox, internal_person_id, 1.0)
             else:
-                update_person_position(tracker_state['persons'][sequential_id], box)
-                tracker_state['persons'][sequential_id]['disappeared'] = 0
+                update_person_position(tracker_state['active_tracked_persons'][internal_person_id], person_bbox)
+                tracker_state['active_tracked_persons'][internal_person_id]['frames_disappeared'] = 0
 
-        for person_id in list(tracker_state['persons'].keys()):
-            if person_id not in current_ids:
-                tracker_state['persons'][person_id]['disappeared'] += 1
-                if tracker_state['persons'][person_id]['disappeared'] > MAX_DISAPPEAR_FRAMES:
-                    del tracker_state['persons'][person_id]
+        for tracked_person_id in list(tracker_state['active_tracked_persons'].keys()):
+            if tracked_person_id not in active_person_ids:
+                tracker_state['active_tracked_persons'][tracked_person_id]['frames_disappeared'] += 1
+                if tracker_state['active_tracked_persons'][tracked_person_id]['frames_disappeared'] > MAX_DISAPPEAR_FRAMES:
+                    del tracker_state['active_tracked_persons'][tracked_person_id]
 
-    return list(tracker_state['persons'].values())
+    return list(tracker_state['active_tracked_persons'].values())
 
-def mark_as_crossed(tracker_state, person_id):
+def mark_person_as_crossed(tracker_state, person_id):
     """
     Marque une personne comme ayant traversé la ligne et la retire du suivi.
     
@@ -183,6 +186,6 @@ def mark_as_crossed(tracker_state, person_id):
         tracker_state (dict): État du tracker
         person_id (int): Identifiant de la personne
     """
-    tracker_state['crossed_ids'].add(person_id)
-    if person_id in tracker_state['persons']:
-        del tracker_state['persons'][person_id] 
+    tracker_state['persons_crossed_line'].add(person_id)
+    if person_id in tracker_state['active_tracked_persons']:
+        del tracker_state['active_tracked_persons'][person_id] 

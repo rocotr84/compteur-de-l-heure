@@ -91,7 +91,7 @@ def setup_video_capture(video_path):
     cap.set(cv2.CAP_PROP_FPS, desired_fps)
     return cap
 
-def process_frame(frame, cache_file, detect_squares):
+def process_frame(frame_raw, cache_file, detect_squares):
     """
     Traite une frame individuelle de la vidéo.
     
@@ -101,7 +101,7 @@ def process_frame(frame, cache_file, detect_squares):
     3. Correction des couleurs via l'algorithme Macbeth
     
     Args:
-        frame (np.array): Image à traiter (format BGR)
+        frame_raw (np.array): Image brute à traiter (format BGR)
         cache_file (str): Chemin vers le fichier de cache pour la correction des couleurs
         detect_squares (bool): Si True, détecte les carrés Macbeth, sinon utilise le cache
     
@@ -113,17 +113,18 @@ def process_frame(frame, cache_file, detect_squares):
         pas à celles de la frame
     """
     # Redimensionnement de la frame
-    frame = cv2.resize(frame, (output_width, output_height))
+    frame_resized = cv2.resize(frame_raw, (output_width, output_height))
     
     # Application du masque si disponible
+    frame_masked = frame_resized
     if mask is not None:
         # Vérification de la compatibilité des dimensions
-        if mask.shape[:2] != frame.shape[:2]:
-            resized_mask = cv2.resize(mask, (frame.shape[1], frame.shape[0]))
-            frame = cv2.bitwise_and(frame, frame, mask=resized_mask)
-            cv2.imshow('Masque', frame)
+        if mask.shape[:2] != frame_resized.shape[:2]:
+            mask_resized = cv2.resize(mask, (frame_resized.shape[1], frame_resized.shape[0]))
+            frame_masked = cv2.bitwise_and(frame_resized, frame_resized, mask=mask_resized)
+            cv2.imshow('Masque', frame_masked)
     
     # Appel à la fonction corriger_image pour ajuster les couleurs
-    frame = corriger_image(frame, cache_file, detect_squares)
+    frame_corrected = corriger_image(frame_masked, cache_file, detect_squares)
     
-    return frame
+    return frame_corrected

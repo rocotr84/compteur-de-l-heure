@@ -34,7 +34,7 @@ def order_points(pts):
     rect[3] = pts[np.argmax(diff)]  # bas-gauche
     return rect
 
-def detect_macbeth_in_scene(image, cache_file):
+def detect_macbeth_in_scene(frame_raw, cache_file):
     """
     Détecte et analyse la charte Macbeth dans une image.
     
@@ -45,7 +45,7 @@ def detect_macbeth_in_scene(image, cache_file):
     4. Sauvegarde des résultats dans le cache
     
     Args:
-        image (np.array): Image source en BGR
+        frame_raw (np.array): Image source en BGR
         cache_file (str): Chemin pour sauvegarder les résultats
     
     Returns:
@@ -54,71 +54,72 @@ def detect_macbeth_in_scene(image, cache_file):
     Raises:
         ValueError: Si l'image est invalide ou si la charte n'est pas détectée
     """
-    if image is None:
+    if frame_raw is None:
         raise ValueError("Image invalide")
 
     # Détection du cadre noir
-    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    mask = cv2.inRange(hsv, (0, 0, 0), (180, 100, 30))
+    frame_hsv = cv2.cvtColor(frame_raw, cv2.COLOR_BGR2HSV)
+    frame_black_mask = cv2.inRange(frame_hsv, (0, 0, 0), (180, 100, 30))
 
     # Nettoyage du masque
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 7))
-    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=1)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=1)
+    morphology_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 7))
+    frame_black_mask = cv2.morphologyEx(frame_black_mask, cv2.MORPH_CLOSE, morphology_kernel, iterations=1)
+    frame_black_mask = cv2.morphologyEx(frame_black_mask, cv2.MORPH_OPEN, morphology_kernel, iterations=1)
 
-    # Recherche du contour du cadre
-    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    best_contour = None
-    max_area = 0
-    for c in contours:
-        area = cv2.contourArea(c)
-        if area > 1000:
-            peri = cv2.arcLength(c, True)
-            approx = cv2.approxPolyDP(c, 0.02 * peri, True)
-            if len(approx) == 4 and area > max_area:
-                max_area = area
-                best_contour = approx
+    # Recherche du contour du cadre noir
+    contours_black, _ = cv2.findContours(frame_black_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    frame_border_contour = None
+    border_area_max = 0
+    
+    for contour in contours_black:
+        contour_area = cv2.contourArea(contour)
+        if contour_area > 1000:
+            contour_perimeter = cv2.arcLength(contour, True)
+            contour_approx = cv2.approxPolyDP(contour, 0.02 * contour_perimeter, True)
+            if len(contour_approx) == 4 and contour_area > border_area_max:
+                border_area_max = contour_area
+                frame_border_contour = contour_approx
 
-    if best_contour is None:
+    if frame_border_contour is None:
         raise ValueError("Aucun grand rectangle noir détecté. Ajustez les seuils ou rapprochez la charte.")
 
-    approx_points = best_contour.reshape(4, 2).astype("float32")
-    rect = order_points(approx_points)
-    (tl, tr, br, bl) = rect
+    corner_points_approx = frame_border_contour.reshape(4, 2).astype("float32")
+    corner_points_ordered = order_points(corner_points_approx)
+    (corner_top_left, corner_top_right, corner_bottom_right, corner_bottom_left) = corner_points_ordered
 
     # Calcul des dimensions de l'image redressée
-    widthA = np.linalg.norm(br - bl)
-    widthB = np.linalg.norm(tr - tl)
-    maxWidth = int(max(widthA, widthB))
-    heightA = np.linalg.norm(tr - br)
-    heightB = np.linalg.norm(tl - bl)
-    maxHeight = int(max(heightA, heightB))
+    width_bottom = np.linalg.norm(corner_bottom_right - corner_bottom_left)
+    width_top = np.linalg.norm(corner_top_right - corner_top_left)
+    target_width = int(max(width_bottom, width_top))
+    
+    height_right = np.linalg.norm(corner_top_right - corner_bottom_right)
+    height_left = np.linalg.norm(corner_top_left - corner_bottom_left)
+    target_height = int(max(height_right, height_left))
 
-    # Transformation perspective
-    dst = np.array([[0, 0],
-                    [maxWidth - 1, 0],
-                    [maxWidth - 1, maxHeight - 1],
-                    [0, maxHeight - 1]], dtype="float32")
-    M = cv2.getPerspectiveTransform(rect, dst)
-    warped = cv2.warpPerspective(image, M, (maxWidth, maxHeight))
+    # Points de destination pour la transformation perspective
+    perspective_points_dest = np.array([
+        [0, 0],
+        [target_width - 1, 0],
+        [target_width - 1, target_height - 1],
+        [0, target_height - 1]
+    ], dtype="float32")
+    
+    perspective_matrix = cv2.getPerspectiveTransform(corner_points_ordered, perspective_points_dest)
+    frame_warped = cv2.warpPerspective(frame_raw, perspective_matrix, (target_width, target_height))
 
-    # Sauvegarder l'image avec les carrés dessinés
+    # Chemins des fichiers de sortie
     warped_image_path = cache_file.replace('.json', '_warped.png')
-    warped_with_squares_path = cache_file.replace('.json', '_warped_with_squares.png')
+    annotated_image_path = cache_file.replace('.json', '_warped_with_squares.png')
+    cv2.imwrite(warped_image_path, frame_warped)
 
-    # Sauvegarde de l'image redressée
-    cv2.imwrite(warped_image_path, warped)
-
-
-    # Recherche des carrés dans l'image redressée
-    squares = []
-    gray_warped = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)
-    edged = cv2.Canny(gray_warped, 50, 200)
-    cnts, _ = cv2.findContours(edged, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # Détection des carrés de couleur
+    frame_warped_gray = cv2.cvtColor(frame_warped, cv2.COLOR_BGR2GRAY)
+    frame_warped_edges = cv2.Canny(frame_warped_gray, 50, 200)
+    color_squares_contours, _ = cv2.findContours(frame_warped_edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     
     # Détection initiale des carrés
     detected_squares = []
-    for c in cnts:
+    for c in color_squares_contours:
         peri = cv2.arcLength(c, True)
         approx = cv2.approxPolyDP(c, 0.02 * peri, True)
         if len(approx) == 4:
@@ -183,33 +184,34 @@ def detect_macbeth_in_scene(image, cache_file):
             
             squares.extend(row)
 
-    # Créer une copie de l'image warped pour le dessin
-    warped_with_squares = warped.copy()
+    # Création de l'image annotée
+    frame_warped_annotated = frame_warped.copy()
     
-    for (x, y, w, h) in squares:
-        # Dessiner le rectangle sur l'image
-        cv2.rectangle(warped_with_squares, (x, y), (x + w, y + h), (0, 255, 0), 2)
+    for (square_x, square_y, square_width, square_height) in squares:
+        cv2.rectangle(frame_warped_annotated, 
+                     (square_x, square_y), 
+                     (square_x + square_width, square_y + square_height), 
+                     (0, 255, 0), 2)
     
-    # Sauvegarder l'image avec les carrés dessinés
-    cv2.imwrite(warped_with_squares_path, warped_with_squares)
+    cv2.imwrite(annotated_image_path, frame_warped_annotated)
     
     # Sauvegarde des informations dans le cache (JSON)
     data = {
         "squares": [list(s) for s in squares],
         "warped_image_path": warped_image_path,
-        "warped_with_squares_path": warped_with_squares_path
+        "warped_with_squares_path": annotated_image_path
     }
     with open(cache_file, "w") as f:
         json.dump(data, f)
 
-    return warped, squares
+    return frame_warped, squares
 
-def get_average_colors(image, cache_file, detect_squares):
+def get_average_colors(frame_raw, cache_file, detect_squares):
     """
     Calcule les couleurs moyennes des 24 carrés de la charte.
     
     Args:
-        image (np.array): Image source en BGR
+        frame_raw (np.array): Image source en BGR
         cache_file (str): Chemin du fichier cache
         detect_squares (bool): Si True, détecte les carrés, sinon utilise le cache
     
@@ -226,23 +228,23 @@ def get_average_colors(image, cache_file, detect_squares):
             squares = [tuple(item) for item in data["squares"]]
             warped_path = data.get("warped_image_path")
             if warped_path and os.path.exists(warped_path):
-                warped = cv2.imread(warped_path)
+                frame_warped = cv2.imread(warped_path)
             else:
                 raise ValueError("Image transformée non trouvée dans le cache")
         else:
             raise ValueError("Fichier cache non trouvé")
     else:
-        warped, squares = detect_macbeth_in_scene(image, cache_file=cache_file)
+        frame_warped, squares = detect_macbeth_in_scene(frame_raw, cache_file=cache_file)
 
-    if warped is None:
+    if frame_warped is None:
         raise ValueError("Impossible d'obtenir l'image transformée")
 
     # Calcul des couleurs moyennes
-    avg_colors = []
+    colors_average = []
     for (x, y, w, h) in squares:
-        roi = warped[y:y+h, x:x+w]
+        roi = frame_warped[y:y+h, x:x+w]
         mean_bgr = cv2.mean(roi)[:3]
-        avg_colors.append((int(mean_bgr[0]), int(mean_bgr[1]), int(mean_bgr[2])))
+        colors_average.append((int(mean_bgr[0]), int(mean_bgr[1]), int(mean_bgr[2])))
     
-    avg_colors.reverse()  # Inversion pour correspondre à l'ordre standard
-    return avg_colors
+    colors_average.reverse()  # Inversion pour correspondre à l'ordre standard
+    return colors_average

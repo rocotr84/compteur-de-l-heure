@@ -5,29 +5,27 @@ from config import (frame_delay, SHOW_TRAJECTORIES, SAVE_VIDEO, VIDEO_OUTPUT_PAT
 from color_detector import get_dominant_color, visualize_color
 from number_detector import get_number, visualize_number
 
-# Variables globales pour remplacer les attributs de classe
-window_name = "Tracking"
-video_writer = None
-start_time = time.time()
+# Variables globales pour la gestion de l'affichage
+display_window_name = "Tracking"
+video_output_writer = None
+display_start_time = time.time()
 
 def init_display():
     """
     Initialise le gestionnaire d'affichage.
-    
-    Configure le VideoWriter si l'enregistrement vidéo est activé dans la configuration.
-    Utilise les paramètres globaux définis dans config.py pour le codec et les dimensions.
+    Configure le VideoWriter si l'enregistrement vidéo est activé.
     """
-    global video_writer
+    global video_output_writer
     if SAVE_VIDEO:
-        fourcc = cv2.VideoWriter_fourcc(*VIDEO_CODEC)
-        video_writer = cv2.VideoWriter(
+        video_codec = cv2.VideoWriter_fourcc(*VIDEO_CODEC)
+        video_output_writer = cv2.VideoWriter(
             VIDEO_OUTPUT_PATH,
-            fourcc,
+            video_codec,
             VIDEO_FPS,
             (output_width, output_height)
         )
 
-def draw_person(frame, person):
+def draw_person(frame_display, tracked_person_data):
     """
     Dessine les éléments visuels pour une personne détectée.
     
@@ -39,38 +37,43 @@ def draw_person(frame, person):
     5. Point central
     
     Args:
-        frame (np.array): Image sur laquelle dessiner (format BGR)
-        person (dict): Dictionnaire contenant les informations de la personne avec:
-            - 'bbox': tuple (x1, y1, x2, y2) des coordonnées du rectangle
-            - 'id': identifiant unique de la personne
-            - 'value': valeur détectée (couleur ou numéro)
-            - 'trajectory': liste des positions précédentes (optionnel)
+        frame_display (np.array): Image sur laquelle dessiner
+        tracked_person_data (dict): Informations de la personne
     """
-    x1, y1, x2, y2 = map(int, person['bbox'])
-    cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+    person_bbox_x1, person_bbox_y1, person_bbox_x2, person_bbox_y2 = map(int, tracked_person_data['bbox'])
+    cv2.rectangle(frame_display, 
+                 (person_bbox_x1, person_bbox_y1), 
+                 (person_bbox_x2, person_bbox_y2), 
+                 (0, 255, 0), 2)
     
-    roi_x1 = int(x1 + (x2 - x1) * 0.30)
-    roi_x2 = int(x1 + (x2 - x1) * 0.70)
-    roi_y1 = int(y1 + (y2 - y1) * 0.2)
-    roi_y2 = int(y1 + (y2 - y1) * 0.4)
+    # Calcul de la zone de détection (30% à 70% en largeur, 20% à 40% en hauteur)
+    detection_zone_x1 = int(person_bbox_x1 + (person_bbox_x2 - person_bbox_x1) * 0.30)
+    detection_zone_x2 = int(person_bbox_x1 + (person_bbox_x2 - person_bbox_x1) * 0.70)
+    detection_zone_y1 = int(person_bbox_y1 + (person_bbox_y2 - person_bbox_y1) * 0.2)
+    detection_zone_y2 = int(person_bbox_y1 + (person_bbox_y2 - person_bbox_y1) * 0.4)
     
-    if roi_x1 >= 0 and roi_y1 >= 0 and roi_x2 <= frame.shape[1] and roi_y2 <= frame.shape[0]:
-        roi_coords = (roi_x1, roi_y1, roi_x2, roi_y2)
+    # Vérification que la zone de détection est dans les limites de l'image
+    if (detection_zone_x1 >= 0 and detection_zone_y1 >= 0 and 
+        detection_zone_x2 <= frame_display.shape[1] and 
+        detection_zone_y2 <= frame_display.shape[0]):
+        
+        detection_zone_coords = (detection_zone_x1, detection_zone_y1, 
+                               detection_zone_x2, detection_zone_y2)
         
         if DETECTION_MODE == "color":
-            detected_value = get_dominant_color(frame, roi_coords)
-            person['value'] = detected_value
-            visualize_color(frame, roi_coords, detected_value)
+            detected_value = get_dominant_color(frame_display, detection_zone_coords)
+            tracked_person_data['value'] = detected_value
+            visualize_color(frame_display, detection_zone_coords, detected_value)
         else:
-            detected_value = get_number(frame, roi_coords)
-            person['value'] = detected_value
-            visualize_number(frame, roi_coords, detected_value)
+            detected_value = get_number(frame_display, detection_zone_coords)
+            tracked_person_data['value'] = detected_value
+            visualize_number(frame_display, detection_zone_coords, detected_value)
     
-    _draw_person_label(frame, person, x1, y1)
-    _draw_person_trajectory(frame, person)
-    _draw_person_center(frame, person)
+    _draw_person_label(frame_display, tracked_person_data, person_bbox_x1, person_bbox_y1)
+    _draw_person_trajectory(frame_display, tracked_person_data)
+    _draw_person_center(frame_display, tracked_person_data)
 
-def _draw_person_label(frame, person, x1, y1):
+def _draw_person_label(frame_display, tracked_person_data, label_pos_x, label_pos_y):
     """
     Dessine l'étiquette d'identification de la personne.
     
@@ -83,10 +86,10 @@ def _draw_person_label(frame, person, x1, y1):
         x1 (int): Coordonnée X du coin supérieur gauche
         y1 (int): Coordonnée Y du coin supérieur gauche
     """
-    id_str = f"{int(person['id'])}"
+    person_id = f"{int(tracked_person_data['id'])}"
     
-    if DETECTION_MODE == "color" and person['value']:
-        color_translation = {
+    if DETECTION_MODE == "color" and tracked_person_data['value']:
+        color_display_names = {
             "rouge_fonce": "rouge fonce",
             "bleu_fonce": "bleu fonce",
             "bleu_clair": "bleu clair",
@@ -98,33 +101,34 @@ def _draw_person_label(frame, person, x1, y1):
             "noir": "noir",
             "inconnu": "inconnu"
         }
-        color_fr = color_translation.get(person['value'], person['value'])
-        label = f"{id_str} - {color_fr}"
-    elif DETECTION_MODE == "number" and person['value']:
-        label = f"{id_str} - N°{person['value']}"
+        display_color_name = color_display_names.get(tracked_person_data['value'], tracked_person_data['value'])
+        label_text = f"{person_id} - {display_color_name}"
+    elif DETECTION_MODE == "number" and tracked_person_data['value']:
+        label_text = f"{person_id} - N°{tracked_person_data['value']}"
     else:
-        label = id_str
+        label_text = person_id
         
-    font = cv2.FONT_HERSHEY_SIMPLEX
+    font_style = cv2.FONT_HERSHEY_SIMPLEX
     font_scale = 0.5
-    thickness = 2
+    font_thickness = 2
     
-    (text_width, text_height), _ = cv2.getTextSize(label, font, font_scale, thickness)
+    (text_width, text_height), _ = cv2.getTextSize(label_text, font_style, font_scale, font_thickness)
     
-    cv2.rectangle(frame, 
-                 (x1, y1 - text_height - 5), 
-                 (x1 + text_width, y1), 
+    # Fond noir pour meilleure lisibilité
+    cv2.rectangle(frame_display, 
+                 (label_pos_x, label_pos_y - text_height - 5), 
+                 (label_pos_x + text_width, label_pos_y), 
                  (0, 0, 0), 
                  -1)
     
-    cv2.putText(frame, label, 
-                (x1, y1-5), 
-                font, 
+    cv2.putText(frame_display, label_text, 
+                (label_pos_x, label_pos_y-5), 
+                font_style, 
                 font_scale, 
                 (255, 255, 255),
-                thickness)
+                font_thickness)
 
-def _draw_person_trajectory(frame, person):
+def _draw_person_trajectory(frame_display, tracked_person_data):
     """
     Dessine la trajectoire de déplacement de la personne.
     
@@ -134,16 +138,17 @@ def _draw_person_trajectory(frame, person):
         frame (np.array): Image sur laquelle dessiner
         person (dict): Informations de la personne incluant sa trajectoire
     """
-    if SHOW_TRAJECTORIES and 'trajectory' in person and len(person['trajectory']) > 1:
-        for i in range(len(person['trajectory'])-1):
-            cv2.line(frame, 
-                    person['trajectory'][i],
-                    person['trajectory'][i+1],
+    if SHOW_TRAJECTORIES and 'trajectory' in tracked_person_data and len(tracked_person_data['trajectory']) > 1:
+        trajectory_points = tracked_person_data['trajectory']
+        for i in range(len(trajectory_points)-1):
+            cv2.line(frame_display, 
+                    trajectory_points[i],
+                    trajectory_points[i+1],
                     (0, 0, 255), 2)
 
-def _draw_person_center(frame, person):
+def _draw_person_center(frame_display, tracked_person_data):
     """
-    Dessine le point central de la personne.
+    Dessine le point central bas de la personne.
     
     Place un point rouge au centre bas du rectangle de détection
     pour représenter la position de la personne.
@@ -156,16 +161,16 @@ def _draw_person_center(frame, person):
     Notes:
         Le point est dessiné en rouge (BGR: 0, 0, 255) avec un rayon de 1 pixel
     """
-    x1, y1, x2, y2 = map(int, person['bbox'])
-    center_x = (x1 + x2) // 2
-    center_y = y2  # Point du bas
-    cv2.circle(frame, 
-               (center_x, center_y),
+    person_bbox_x1, person_bbox_y1, person_bbox_x2, person_bbox_y2 = map(int, tracked_person_data['bbox'])
+    person_center_x = (person_bbox_x1 + person_bbox_x2) // 2
+    person_center_y = person_bbox_y2  # Point bas
+    cv2.circle(frame_display, 
+               (person_center_x, person_center_y),
                1,
                (0, 0, 255),
                -1)
 
-def draw_counters(frame, counter):
+def draw_counters(frame_display, counter_values):
     """
     Affiche les compteurs pour chaque valeur détectée.
     
@@ -176,13 +181,14 @@ def draw_counters(frame, counter):
         frame (np.array): Image sur laquelle afficher les compteurs
         counter (defaultdict): Dictionnaire {valeur: nombre} des compteurs
     """
-    y_offset = 30  # Position verticale initiale
-    for color, count in counter.items():
-        cv2.putText(frame, f"{color}: {count}", (10, y_offset),
+    text_y_position = 30
+    for value_name, count in counter_values.items():
+        cv2.putText(frame_display, f"{value_name}: {count}", 
+                   (10, text_y_position),
                    cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-        y_offset += 30  # Espacement vertical entre chaque ligne
-        
-def draw_crossing_line(frame, start_point, end_point):
+        text_y_position += 30
+
+def draw_crossing_line(frame_display, line_start_point, line_end_point):
     """
     Dessine la ligne de comptage sur l'image.
     
@@ -191,9 +197,9 @@ def draw_crossing_line(frame, start_point, end_point):
         start_point (tuple): Point de début (x, y) de la ligne
         end_point (tuple): Point de fin (x, y) de la ligne
     """
-    cv2.line(frame, start_point, end_point, (0, 0, 255), 2)
-    
-def draw_timer(frame):
+    cv2.line(frame_display, line_start_point, line_end_point, (0, 0, 255), 2)
+
+def draw_timer(frame_display):
     """
     Affiche le chronomètre sur l'image.
     
@@ -206,17 +212,18 @@ def draw_timer(frame):
     Returns:
         float: Temps écoulé en secondes depuis le début
     """
-    elapsed_time = time.time() - start_time
-    minutes = int(elapsed_time // 60)
-    seconds = int(elapsed_time % 60)
-    timer_text = f"{minutes:02d}:{seconds:02d}"
+    elapsed_time = time.time() - display_start_time
+    minutes_elapsed = int(elapsed_time // 60)
+    seconds_elapsed = int(elapsed_time % 60)
+    timer_text = f"{minutes_elapsed:02d}:{seconds_elapsed:02d}"
     
-    cv2.putText(frame, timer_text, (10, 30),
-               cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+    cv2.putText(frame_display, timer_text, 
+                (10, 30),
+                cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
     
     return elapsed_time
 
-def show_frame(frame):
+def show_frame(frame_display):
     """
     Affiche ou enregistre la frame selon la configuration.
     
@@ -232,22 +239,22 @@ def show_frame(frame):
             - bool: True si l'utilisateur souhaite quitter, False sinon
             - float: Temps écoulé en secondes
     """
-    elapsed_time = draw_timer(frame)
+    elapsed_time = draw_timer(frame_display)
     
     if SAVE_VIDEO:
-        video_writer.write(frame)
+        video_output_writer.write(frame_display)
         return False, elapsed_time
     else:
-        cv2.imshow("Tracking", frame)
+        cv2.imshow(display_window_name, frame_display)
         return cv2.waitKey(1) & 0xFF == ord('q'), elapsed_time
 
-def release():
+def release_display():
     """
     Libère les ressources utilisées par l'affichage.
     
     Ferme le fichier vidéo si l'enregistrement était activé
     et détruit toutes les fenêtres OpenCV.
     """
-    if video_writer is not None:
-        video_writer.release()
+    if video_output_writer is not None:
+        video_output_writer.release()
     cv2.destroyAllWindows() 

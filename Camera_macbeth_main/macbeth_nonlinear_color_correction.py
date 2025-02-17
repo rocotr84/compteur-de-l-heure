@@ -137,7 +137,7 @@ def corriger_image(image, cache_file, detect_squares):
     # Application de la correction à l'image complète (en BGR) et retour
     return appliquer_correction_non_lineaire(image, params)
 
-if __name__ == "__main__":
+#if __name__ == "__main__":
 
     image = sys.argv[1]
     cache_file = sys.argv[2]

@@ -4,7 +4,7 @@ import os
 # Récupérer le chemin du dossier contenant le script
 current_dir = os.path.dirname(__file__)
 # Construire le chemin vers la vidéo dans 'assets'
-video_path = os.path.join(current_dir, "..", "assets", "p3.mp4")
+video_path = os.path.join(current_dir, "..", "assets","video", "p3_macbeth.mp4")
 
 # Ouvrir la vidéo
 cap = cv2.VideoCapture(video_path)

@@ -55,6 +55,8 @@ def main():
     print(f"Démarrage du suivi en mode {DETECTION_MODE}...")
     
     # Initialisation des composants
+
+
     tracker = PersonTracker()
     video_proc = VideoProcessor(output_width, output_height, desired_fps)
     display = DisplayManager()

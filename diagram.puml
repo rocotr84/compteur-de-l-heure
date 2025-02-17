@@ -1,0 +1,334 @@
+
+
+@startuml t
+title Diagramme des fichiers Camera_macbeth_main
+
+package "Camera_macbeth_main" {
+    package "MacbethNonlinearColorCorrection" {
+        class modele_non_lineaire #87CEEB {
+            + params: np.array
+            + x: np.array
+            + execute(): np.array
+        }
+
+        class calibrer_transformation_non_lineaire #87CEEB {
+            + measured: np.array
+            + target: np.array
+            + execute(): np.array
+        }
+
+        class appliquer_correction_non_lineaire #87CEEB {
+            + image: np.array
+            + params: np.array
+            + execute(): np.array
+        }
+
+        class corriger_image #87CEEB {
+            + image: np.array
+            + cache_file: str
+            + detect_squares: bool
+            + execute(): image corrigé au format BGR
+        }
+    }
+
+    package "MacbethColorAndRectangleDetector" {
+        class order_points #87CEEB {
+            + pts: np.array
+            + execute(): np.array
+        }
+
+        class detect_macbeth_in_scene #87CEEB {
+            + image: np.array
+            + cache_file: str
+            + execute(): tuple
+        }
+
+        class get_average_colors #87CEEB {
+            + image: np.array
+            + cache_file: str
+            + detect_squares: bool
+            + execute(): liste de couleur
+        }
+    }
+
+    package "VideoProcessor" {
+            class init_video_processor {
+            + output_width : int
+            +output_height : int
+            + desired_fps: int
+            +execute(): void
+        }
+        
+        class load_mask {
+            + mask_path: str
+            + execute(): void
+        }
+
+        class setup_video_capture {
+            + video_path: str
+            + execute(): cv2.VideoCapture
+        }
+
+        class process_frame #87CEEB {
+            + frame: np.array
+            + cache_file: str
+            + detect_squares: bool
+            + execute(): image traitée
+        }
+    }
+
+    package "Main" {
+        class signal_handler {
+        + sig: int
+        + frame: signal.FrameType
+        + execute(): void
+    }
+
+    class setup_device {
+        + execute(): torch.device
+    }
+
+    class main {
+        + execute(): void
+    }
+  }
+  
+  package "Tracker" {
+    class create_tracked_person {
+        + bbox: list
+        + id: int
+        + confidence: float
+        + execute(): dict
+    }
+
+    class get_center {
+        + bbox: list
+        + execute(): tuple
+    }
+
+    class update_person_position {
+        + person: dict
+        + bbox: list
+        + execute(): void
+    }
+
+    class check_line_crossing {
+        + person: dict
+        + line_start: tuple
+        + line_end: tuple
+        + execute(): bool
+    }
+
+    class create_tracker {
+        + execute(): dict
+    }
+
+    class update_tracker {
+        + tracker_state: dict
+        + frame: np.array
+        + execute(): list
+    }
+
+    class mark_as_crossed {
+        + tracker_state: dict
+        + person_id: int
+        + execute(): void
+    }
+  }
+package "ColorDetector" {
+    class get_dominant_color {
+        + frame: np.array
+        + roi_coords: tuple
+        + execute(): str
+    }
+
+    class visualize_color {
+        + frame: np.array
+        + roi_coords: tuple
+        + color_name: str
+        + execute(): void
+    }
+}
+
+  package "ColorWeighting" {
+    class get_color_weight {
+        + color: str
+        + current_time: float
+        + execute(): float
+    }
+
+    class update_color_timestamp {
+        + color: str
+        + timestamp: float
+        + execute(): void
+    }
+
+    class get_weighted_color_probabilities {
+        + color_counts: dict
+        + current_time: float
+        + execute(): dict
+    }
+  }
+
+package "NumberDetector" {
+    class preprocess_roi {
+        + roi: np.array
+        + execute(): np.array
+    }
+
+    class get_number {
+        + frame: np.array
+        + roi_coords: tuple
+        + execute(): str
+    }
+
+    class visualize_number {
+        + frame: np.array
+        + roi_coords: tuple
+        + number: str
+        + execute(): void
+    }
+  }
+  package "DisplayManager" {
+    class init_display {
+        + execute(): void
+    }
+
+    class draw_person {
+        + frame: np.array
+        + person: dict
+        + execute(): void
+    }
+
+    class _draw_person_label {
+        + frame: np.array
+        + person: dict
+        + x1: int
+        + y1: int
+        + execute(): void
+    }
+
+    class _draw_person_trajectory {
+        + frame: np.array
+        + person: dict
+        + execute(): void
+    }
+
+    class _draw_person_center {
+        + frame: np.array
+        + person: dict
+        + execute(): void
+    }
+
+    class draw_counters {
+        + frame: np.array
+        + counter: defaultdict
+        + execute(): void
+    }
+
+    class draw_crossing_line {
+        + frame: np.array
+        + start_point: tuple
+        + end_point: tuple
+        + execute(): void
+    }
+
+    class draw_timer {
+        + frame: np.array
+        + execute(): float
+    }
+
+    class show_frame {
+        + frame: np.array
+        + execute(): tuple[bool, float]
+    }
+
+    class release {
+        + execute(): void
+    }
+  }
+  
+  package "DetectionHistory" {
+    class init_detection_history {
+        + output_file: str
+        + execute(): void
+    }
+
+    class update_color {
+        + person_id: int
+        + value: str
+        + execute(): void
+    }
+
+    class get_dominant_value {
+        + person_id: int
+        + execute(): str
+    }
+
+    class record_crossing {
+        + person_id: int
+        + elapsed_time: float
+        + execute(): void
+    }
+
+    class cleanup {
+        + execute(): void
+    }
+}
+}
+
+
+' Création des liens entre les fichiers
+
+main --> signal_handler
+main --> init_detection_history
+main --> init_video_processor
+main --> load_mask : Initialisation
+main --> setup_video_capture : Initialisation
+main --> create_tracker : Initialisation
+main --> init_display : Initialisation
+main --> setup_device : Initialisation
+main --> process_frame
+main --> update_tracker
+main --> update_color
+main --> check_line_crossing
+main --> draw_timer
+main --> get_dominant_value
+main --> record_crossing
+main --> mark_as_crossed
+main --> draw_person
+main --> draw_crossing_line
+main --> draw_counters
+main --> show_frame
+main --> cleanup
+main --> release
+
+signal_handler --> cleanup
+process_frame -->  corriger_image
+corriger_image --> get_average_colors
+corriger_image --> calibrer_transformation_non_lineaire
+corriger_image --> appliquer_correction_non_lineaire
+calibrer_transformation_non_lineaire --> modele_non_lineaire
+appliquer_correction_non_lineaire --> modele_non_lineaire
+get_average_colors --> detect_macbeth_in_scene
+detect_macbeth_in_scene --> order_points
+record_crossing --> get_dominant_value
+
+update_tracker --> create_tracked_person
+update_tracker --> update_person_position
+update_person_position --> get_center
+draw_person --> get_dominant_color
+draw_person --> get_number
+draw_person --> visualize_color
+draw_person --> visualize_number
+draw_person --> _draw_person_label
+draw_person --> _draw_person_trajectory
+draw_person --> _draw_person_center
+visualize_number -->preprocess_roi
+get_weighted_color_probabilities --> get_color_weight
+get_dominant_color --> get_weighted_color_probabilities
+get_dominant_color --> update_color_timestamp
+
+@enduml
+
+

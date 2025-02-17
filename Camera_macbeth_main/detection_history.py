@@ -93,7 +93,7 @@ def record_crossing(person_id, current_elapsed_time):
         - Utilise os.fsync pour garantir l'écriture sur le disque
     """
     dominant_detection = get_dominant_detection(person_id)
-    if dominant_detection:
+    if dominant_detection and csv_output_writer and csv_output_file:
         crossing_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         minutes_elapsed = int(current_elapsed_time // 60)
         seconds_elapsed = int(current_elapsed_time % 60)

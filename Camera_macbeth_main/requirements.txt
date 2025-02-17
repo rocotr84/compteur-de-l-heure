@@ -1,0 +1,27 @@
+# Packages de base
+numpy>=1.24.0
+opencv-python-headless>=4.8.0
+Pillow>=9.5.0
+
+# Packages pour le deep learning et la détection
+torch>=2.0.0
+ultralytics>=8.0.0
+easyocr>=1.7.0
+
+# Packages pour le traitement scientifique
+scipy>=1.10.0
+matplotlib>=3.7.0
+
+# Packages utilitaires
+python-dateutil>=2.8.2
+psutil>=5.9.0
+GPUtil>=1.4.0
+
+# Packages de dépendances
+contourpy>=1.0.0
+cycler>=0.11.0
+fonttools>=4.38.0
+kiwisolver>=1.4.4
+packaging>=23.0
+pyparsing>=3.0.9
+six>=1.16.0

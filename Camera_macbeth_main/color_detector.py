@@ -3,6 +3,7 @@ import numpy as np
 from color_weighting import get_weighted_color_probabilities, update_color_timestamp
 
 # Définition des plages de couleurs HSV
+# Format: ((teinte_min, saturation_min, valeur_min), (teinte_max, saturation_max, valeur_max))
 color_ranges = {
     "noir": ((0, 0, 0), (180, 255, 50)),
     "blanc": ((0, 0, 200), (180, 30, 255)),
@@ -17,12 +18,23 @@ color_ranges = {
 
 def get_dominant_color(frame, roi_coords):
     """
-    Détecte la couleur dominante dans la ROI
+    Détecte la couleur dominante dans une région d'intérêt (ROI) de l'image.
+    
+    Le processus comprend :
+    1. Extraction de la ROI
+    2. Conversion en espace colorimétrique HSV
+    3. Détection des pixels dans chaque plage de couleur
+    4. Application des pondérations pour déterminer la couleur dominante
+    
     Args:
-        frame (np.array): Image complète
-        roi_coords (tuple): Coordonnées de la ROI (x1, y1, x2, y2)
+        frame (np.array): Image complète au format BGR
+        roi_coords (tuple): Coordonnées de la ROI sous forme (x1, y1, x2, y2)
+    
     Returns:
-        str: Nom de la couleur dominante
+        str: Nom de la couleur dominante ou "inconnu" en cas d'échec
+    
+    Notes:
+        La fonction met à jour l'horodatage de la couleur détectée via update_color_timestamp
     """
     try:
         x1, y1, x2, y2 = roi_coords
@@ -56,11 +68,17 @@ def get_dominant_color(frame, roi_coords):
 
 def visualize_color(frame, roi_coords, color_name):
     """
-    Visualise la couleur détectée sur l'image
+    Visualise la couleur détectée en dessinant un rectangle sur l'image.
+    
     Args:
-        frame (np.array): Image sur laquelle dessiner
-        roi_coords (tuple): Coordonnées de la ROI (x1, y1, x2, y2)
+        frame (np.array): Image sur laquelle dessiner (format BGR)
+        roi_coords (tuple): Coordonnées de la ROI sous forme (x1, y1, x2, y2)
         color_name (str): Nom de la couleur détectée
+    
+    Notes:
+        Les couleurs de visualisation sont définies en BGR :
+        - Couleurs spécifiques pour chaque couleur détectée
+        - Gris (128, 128, 128) pour une couleur inconnue
     """
     x1, y1, x2, y2 = roi_coords
     

@@ -1,12 +1,15 @@
-#!/usr/bin/env python3
 """
-Ce programme utilise une charte de couleur Macbeth pour corriger les couleurs d'une image
-avec une transformation non linéaire, le tout en espace BGR.
-Pour chaque canal (B, G, R), la correction est définie par :
+Module de correction non linéaire des couleurs utilisant une charte Macbeth.
+
+Ce module implémente une correction des couleurs en espace BGR via une transformation
+non linéaire calibrée sur une charte de couleur Macbeth.
+
+Principe de la correction :
+    Pour chaque canal (B, G, R), la correction applique la transformation :
     couleur_corrigée_j = (a_j * B + b_j * G + c_j * R + d_j) ** gamma_j
-Les 15 paramètres de cette transformation sont déterminés via une optimisation non linéaire
-(minimisation de l'erreur entre les couleurs mesurées et les couleurs cibles, toutes en BGR).
-Assurez-vous d'adapter les chemins d'accès à l'image et aux fichiers selon votre environnement.
+
+    Les 15 paramètres sont optimisés pour minimiser l'erreur entre les couleurs
+    mesurées et les couleurs cibles de la charte Macbeth.
 """
 
 import cv2
@@ -17,15 +20,23 @@ from macbeth_color_and_rectangle_detector import get_average_colors
 
 def modele_non_lineaire(params, x):
     """
-    Applique le modèle non linéaire aux données en BGR.
+    Applique le modèle non linéaire de correction des couleurs.
     
-    Pour chaque canal (B, G, R), le modèle est :
-        f_j(x) = (a_j * B + b_j * G + c_j * R + d_j) ** gamma_j
-    où x est une matrice (n,3) (les colonnes correspondent aux canaux B, G, R)
-    et params est un vecteur de 15 paramètres répartis comme suit :
-        Pour le canal B (index 0) : a_b, b_b, c_b, d_b, gamma_b   (params[0:5])
-        Pour le canal G (index 1) : a_g, b_g, c_g, d_g, gamma_g   (params[5:10])
-        Pour le canal R (index 2) : a_r, b_r, c_r, d_r, gamma_r   (params[10:15])
+    Pour chaque canal (B, G, R), applique la transformation :
+    f_j(x) = (a_j * B + b_j * G + c_j * R + d_j) ** gamma_j
+    
+    Args:
+        params (np.array): Vecteur de 15 paramètres organisés comme suit :
+            - Canal B : a_b, b_b, c_b, d_b, gamma_b   (params[0:5])
+            - Canal G : a_g, b_g, c_g, d_g, gamma_g   (params[5:10])
+            - Canal R : a_r, b_r, c_r, d_r, gamma_r   (params[10:15])
+        x (np.array): Matrice (n,3) des couleurs d'entrée en BGR
+    
+    Returns:
+        np.array: Matrice (n,3) des couleurs transformées en BGR
+    
+    Notes:
+        Les valeurs négatives sont évitées en appliquant un seuil minimum de 1e-6
     """
     # Paramètres pour le canal B (Blue)
     a_b, b_b, c_b, d_b, gamma_b = params[0:5]
@@ -53,14 +64,21 @@ def modele_non_lineaire(params, x):
 
 def calibrer_transformation_non_lineaire(measured, target):
     """
-    Calcule les 15 paramètres de la transformation non linéaire en espace BGR.
+    Optimise les paramètres de la transformation non linéaire.
+    
+    Cette fonction détermine les 15 paramètres optimaux qui minimisent
+    l'erreur entre les couleurs mesurées et les couleurs cibles.
     
     Args:
-        measured (np.array): Couleurs mesurées (n,3) en BGR, normalisées dans [0,1].
-        target (np.array): Couleurs cibles (n,3) en BGR, normalisées dans [0,1].
+        measured (np.array): Couleurs mesurées (n,3) en BGR, normalisées [0,1]
+        target (np.array): Couleurs cibles (n,3) en BGR, normalisées [0,1]
     
     Returns:
-        np.array: Vecteur de paramètres optimaux (15,).
+        np.array: Vecteur des 15 paramètres optimaux
+    
+    Notes:
+        - Initialisation avec une transformation identitaire
+        - Les paramètres gamma sont contraints entre 0.1 et 5
     """
     def residuals(params):
         pred = modele_non_lineaire(params, measured)
@@ -83,14 +101,17 @@ def calibrer_transformation_non_lineaire(measured, target):
 
 def appliquer_correction_non_lineaire(image, params):
     """
-    Applique la correction non linéaire à l'image entière en espace BGR.
+    Applique la correction non linéaire à une image complète.
     
     Args:
-        image (np.array): Image en format BGR (uint8).
-        params (np.array): Vecteur de paramètres (15,) de la transformation non linéaire.
+        image (np.array): Image d'entrée en BGR (uint8)
+        params (np.array): Vecteur des 15 paramètres de correction
     
     Returns:
-        np.array: Image corrigée en format BGR (uint8).
+        np.array: Image corrigée en BGR (uint8)
+    
+    Notes:
+        Les valeurs sont automatiquement clippées dans [0,255]
     """
     h, w, _ = image.shape
     image_norm = image.astype(np.float32) / 255.0
@@ -101,18 +122,27 @@ def appliquer_correction_non_lineaire(image, params):
 
 def corriger_image(image, cache_file, detect_squares):
     """
-    Corrige les couleurs d'une image en utilisant une charte Macbeth.
+    Corrige les couleurs d'une image via la charte Macbeth.
+    
+    Cette fonction principale :
+    1. Récupère les couleurs moyennes des 24 patchs
+    2. Compare avec les couleurs cibles standard
+    3. Optimise la transformation non linéaire
+    4. Applique la correction à l'image entière
     
     Args:
-        image (np.array): Image d'entrée en format BGR
-        cache_file (str): Chemin vers le fichier de cache
+        image (np.array): Image d'entrée en BGR
+        cache_file (str): Chemin vers le fichier de cache des positions des carrés
         detect_squares (bool): Si True, détecte les carrés, sinon utilise le cache
     
     Returns:
-        np.array: Image corrigée en format BGR
+        np.array: Image corrigée en BGR
+    
+    Raises:
+        ValueError: Si le nombre de patchs détectés ne correspond pas à 24
     """
     # Récupération des couleurs moyennes des 24 patchs via get_average_colors (en BGR)
-    measured_colors = get_average_colors(image, cache_file=cache_file, detect_squares=detect_squares)
+    measured_colors = get_average_colors(image, cache_file, detect_squares)
     measured_colors = np.array(measured_colors, dtype=np.float32)
 
     # Définition des couleurs cibles standard de la charte Macbeth en BGR
@@ -137,9 +167,3 @@ def corriger_image(image, cache_file, detect_squares):
     # Application de la correction à l'image complète (en BGR) et retour
     return appliquer_correction_non_lineaire(image, params)
 
-#if __name__ == "__main__":
-
-    image = sys.argv[1]
-    cache_file = sys.argv[2]
-    detect_squares = sys.argv[3]
-    corriger_image(image, cache_file, detect_squares)

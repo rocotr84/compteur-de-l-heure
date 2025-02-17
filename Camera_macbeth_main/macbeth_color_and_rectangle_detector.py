@@ -1,3 +1,15 @@
+"""
+Module de détection et d'analyse de la charte Macbeth.
+
+Ce module permet de :
+1. Détecter la charte Macbeth dans une image
+2. Corriger la perspective pour obtenir une vue orthogonale
+3. Identifier et extraire les 24 carrés de couleur
+4. Calculer les couleurs moyennes de chaque carré
+
+La détection utilise le cadre noir de la charte comme repère principal.
+"""
+
 import cv2
 import numpy as np
 import json
@@ -5,8 +17,13 @@ import os
 
 def order_points(pts):
     """
-    Trie 4 points (x,y) pour qu'ils soient dans l'ordre :
-    - haut-gauche, haut-droit, bas-droit, bas-gauche
+    Ordonne 4 points pour former un rectangle cohérent.
+    
+    Args:
+        pts (np.array): Tableau (4,2) de points (x,y)
+    
+    Returns:
+        np.array: Points ordonnés [haut-gauche, haut-droit, bas-droit, bas-gauche]
     """
     rect = np.zeros((4, 2), dtype="float32")
     s = pts.sum(axis=1)
@@ -19,28 +36,37 @@ def order_points(pts):
 
 def detect_macbeth_in_scene(image, cache_file):
     """
-    Détecte la charte Macbeth dans l'image, corrige la perspective,
-    et détecte les carrés internes.
+    Détecte et analyse la charte Macbeth dans une image.
     
-    Paramètres :
-      - image : image source en format BGR (np.array)
-      - cache_file : nom du fichier de cache pour stocker les données des carrés
+    Le processus comprend :
+    1. Détection du cadre noir par seuillage HSV
+    2. Correction de la perspective
+    3. Détection des 24 carrés internes
+    4. Sauvegarde des résultats dans le cache
+    
+    Args:
+        image (np.array): Image source en BGR
+        cache_file (str): Chemin pour sauvegarder les résultats
+    
+    Returns:
+        tuple: (image_redressée, liste_des_carrés)
+        
+    Raises:
+        ValueError: Si l'image est invalide ou si la charte n'est pas détectée
     """
     if image is None:
         raise ValueError("Image invalide")
 
-    # Conversion en HSV et création d'un masque pour le fond noir
+    # Détection du cadre noir
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    lower_black = (0, 0, 0)
-    upper_black = (180, 100, 30)  # Réduction de la tolérance sur S et V
-    mask = cv2.inRange(hsv, lower_black, upper_black)
+    mask = cv2.inRange(hsv, (0, 0, 0), (180, 100, 30))
 
-    # Augmentation de la taille du kernel pour mieux filtrer le bruit
+    # Nettoyage du masque
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 7))
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=1)
     mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=1)
 
-    # Recherche du plus grand contour noir (supposé être le cadre de la charte)
+    # Recherche du contour du cadre
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     best_contour = None
     max_area = 0
@@ -180,22 +206,24 @@ def detect_macbeth_in_scene(image, cache_file):
 
 def get_average_colors(image, cache_file, detect_squares):
     """
-    Pour chaque carré détecté dans l'image, calcule et retourne la couleur moyenne en BGR.
-
+    Calcule les couleurs moyennes des 24 carrés de la charte.
+    
     Args:
-        image (np.array): Image source au format BGR
-        cache_file (str): Chemin vers le fichier de cache
+        image (np.array): Image source en BGR
+        cache_file (str): Chemin du fichier cache
         detect_squares (bool): Si True, détecte les carrés, sinon utilise le cache
-
+    
     Returns:
-        list: Liste de tuples (B, G, R) pour chaque carré
+        list: Liste de 24 tuples (B,G,R) représentant les couleurs moyennes
+    
+    Raises:
+        ValueError: Si le cache est invalide ou si la détection échoue
     """
     if not detect_squares:
         if os.path.exists(cache_file):
             with open(cache_file, "r") as f:
                 data = json.load(f)
             squares = [tuple(item) for item in data["squares"]]
-            # Chargement de l'image redressée depuis le cache
             warped_path = data.get("warped_image_path")
             if warped_path and os.path.exists(warped_path):
                 warped = cv2.imread(warped_path)
@@ -209,11 +237,12 @@ def get_average_colors(image, cache_file, detect_squares):
     if warped is None:
         raise ValueError("Impossible d'obtenir l'image transformée")
 
+    # Calcul des couleurs moyennes
     avg_colors = []
     for (x, y, w, h) in squares:
         roi = warped[y:y+h, x:x+w]
         mean_bgr = cv2.mean(roi)[:3]
         avg_colors.append((int(mean_bgr[0]), int(mean_bgr[1]), int(mean_bgr[2])))
-    # Inverser la liste si besoin (par exemple, si l'ordre de la charte doit être inversé)
-    avg_colors.reverse()
+    
+    avg_colors.reverse()  # Inversion pour correspondre à l'ordre standard
     return avg_colors

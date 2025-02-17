@@ -48,7 +48,7 @@ SHOW_TRAJECTORIES = False  # Option pour activer/désactiver l'affichage des tra
 # Options d'enregistrement vidéo
 SAVE_VIDEO = True  # Option pour activer l'enregistrement au lieu de l'affichage
 VIDEO_OUTPUT_PATH = "output.mp4"  # Chemin du fichier de sortie
-VIDEO_FPS = 15  # FPS pour la vidéo de sortie
+VIDEO_FPS = 30  # FPS pour la vidéo de sortie
 VIDEO_CODEC = 'mp4v'  # Codec vidéo (peut aussi être 'XVID' pour .avi)
 
 # Configuration du mode de détection
@@ -58,7 +58,3 @@ DETECTION_MODE = "color"  # "color" ou "number"
 COLOR_MIN_PIXEL_RATIO = 0.15
 COLOR_MIN_PIXEL_COUNT = 100
 COLOR_HISTORY_SIZE = 2
-
-# Configuration de la détection des numéros
-NUMBER_MIN_CONFIDENCE = 0.6
-NUMBER_ROI_SCALE = 0.4  # Taille relative de la ROI par rapport à la bbox

@@ -11,7 +11,12 @@ video_writer = None
 start_time = time.time()
 
 def init_display():
-    """Initialise le gestionnaire d'affichage"""
+    """
+    Initialise le gestionnaire d'affichage.
+    
+    Configure le VideoWriter si l'enregistrement vidéo est activé dans la configuration.
+    Utilise les paramètres globaux définis dans config.py pour le codec et les dimensions.
+    """
     global video_writer
     if SAVE_VIDEO:
         fourcc = cv2.VideoWriter_fourcc(*VIDEO_CODEC)
@@ -24,10 +29,22 @@ def init_display():
 
 def draw_person(frame, person):
     """
-    Dessine les éléments visuels pour une personne détectée
+    Dessine les éléments visuels pour une personne détectée.
+    
+    Cette fonction gère l'affichage de :
+    1. Rectangle de détection
+    2. Zone d'intérêt (ROI) pour la détection de couleur/numéro
+    3. Étiquette d'identification
+    4. Trajectoire (si activée)
+    5. Point central
+    
     Args:
-        frame (np.array): Image sur laquelle dessiner
-        person (dict): Dictionnaire contenant les informations de la personne
+        frame (np.array): Image sur laquelle dessiner (format BGR)
+        person (dict): Dictionnaire contenant les informations de la personne avec:
+            - 'bbox': tuple (x1, y1, x2, y2) des coordonnées du rectangle
+            - 'id': identifiant unique de la personne
+            - 'value': valeur détectée (couleur ou numéro)
+            - 'trajectory': liste des positions précédentes (optionnel)
     """
     x1, y1, x2, y2 = map(int, person['bbox'])
     cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
@@ -54,7 +71,18 @@ def draw_person(frame, person):
     _draw_person_center(frame, person)
 
 def _draw_person_label(frame, person, x1, y1):
-    """Dessine l'étiquette de la personne"""
+    """
+    Dessine l'étiquette d'identification de la personne.
+    
+    Affiche l'ID et la valeur détectée (couleur ou numéro) avec un fond noir
+    pour une meilleure lisibilité.
+    
+    Args:
+        frame (np.array): Image sur laquelle dessiner
+        person (dict): Informations de la personne
+        x1 (int): Coordonnée X du coin supérieur gauche
+        y1 (int): Coordonnée Y du coin supérieur gauche
+    """
     id_str = f"{int(person['id'])}"
     
     if DETECTION_MODE == "color" and person['value']:
@@ -97,7 +125,15 @@ def _draw_person_label(frame, person, x1, y1):
                 thickness)
 
 def _draw_person_trajectory(frame, person):
-    """Dessine la trajectoire de la personne"""
+    """
+    Dessine la trajectoire de déplacement de la personne.
+    
+    Trace des lignes entre les positions successives si SHOW_TRAJECTORIES est activé.
+    
+    Args:
+        frame (np.array): Image sur laquelle dessiner
+        person (dict): Informations de la personne incluant sa trajectoire
+    """
     if SHOW_TRAJECTORIES and 'trajectory' in person and len(person['trajectory']) > 1:
         for i in range(len(person['trajectory'])-1):
             cv2.line(frame, 
@@ -106,7 +142,20 @@ def _draw_person_trajectory(frame, person):
                     (0, 0, 255), 2)
 
 def _draw_person_center(frame, person):
-    """Dessine le point central de la personne"""
+    """
+    Dessine le point central de la personne.
+    
+    Place un point rouge au centre bas du rectangle de détection
+    pour représenter la position de la personne.
+    
+    Args:
+        frame (np.array): Image sur laquelle dessiner
+        person (dict): Informations de la personne contenant:
+            - 'bbox': tuple (x1, y1, x2, y2) des coordonnées du rectangle
+    
+    Notes:
+        Le point est dessiné en rouge (BGR: 0, 0, 255) avec un rayon de 1 pixel
+    """
     x1, y1, x2, y2 = map(int, person['bbox'])
     center_x = (x1 + x2) // 2
     center_y = y2  # Point du bas
@@ -118,10 +167,14 @@ def _draw_person_center(frame, person):
 
 def draw_counters(frame, counter):
     """
-    Affiche les compteurs pour chaque couleur
+    Affiche les compteurs pour chaque valeur détectée.
+    
+    Affiche une liste verticale des compteurs avec le format "valeur: nombre"
+    en haut à gauche de l'image.
+    
     Args:
         frame (np.array): Image sur laquelle afficher les compteurs
-        counter (defaultdict): Dictionnaire contenant les compteurs par couleur
+        counter (defaultdict): Dictionnaire {valeur: nombre} des compteurs
     """
     y_offset = 30  # Position verticale initiale
     for color, count in counter.items():
@@ -131,16 +184,28 @@ def draw_counters(frame, counter):
         
 def draw_crossing_line(frame, start_point, end_point):
     """
-    Dessine la ligne de comptage
+    Dessine la ligne de comptage sur l'image.
+    
     Args:
-        frame (np.array): Image sur laquelle dessiner la ligne
-        start_point (tuple): Point de début de la ligne (x, y)
-        end_point (tuple): Point de fin de la ligne (x, y)
+        frame (np.array): Image sur laquelle dessiner
+        start_point (tuple): Point de début (x, y) de la ligne
+        end_point (tuple): Point de fin (x, y) de la ligne
     """
     cv2.line(frame, start_point, end_point, (0, 0, 255), 2)
     
 def draw_timer(frame):
-    """Affiche le chronomètre sur l'image"""
+    """
+    Affiche le chronomètre sur l'image.
+    
+    Affiche le temps écoulé depuis le début au format MM:SS
+    en haut à gauche de l'image.
+    
+    Args:
+        frame (np.array): Image sur laquelle afficher le timer
+    
+    Returns:
+        float: Temps écoulé en secondes depuis le début
+    """
     elapsed_time = time.time() - start_time
     minutes = int(elapsed_time // 60)
     seconds = int(elapsed_time % 60)
@@ -152,7 +217,21 @@ def draw_timer(frame):
     return elapsed_time
 
 def show_frame(frame):
-    """Affiche ou enregistre la frame selon la configuration"""
+    """
+    Affiche ou enregistre la frame selon la configuration.
+    
+    Si SAVE_VIDEO est activé, enregistre la frame dans le fichier vidéo.
+    Sinon, affiche la frame dans une fenêtre et vérifie si l'utilisateur
+    souhaite quitter (touche 'q').
+    
+    Args:
+        frame (np.array): Image à afficher/enregistrer
+    
+    Returns:
+        tuple: (bool, float)
+            - bool: True si l'utilisateur souhaite quitter, False sinon
+            - float: Temps écoulé en secondes
+    """
     elapsed_time = draw_timer(frame)
     
     if SAVE_VIDEO:
@@ -163,7 +242,12 @@ def show_frame(frame):
         return cv2.waitKey(1) & 0xFF == ord('q'), elapsed_time
 
 def release():
-    """Libère les ressources"""
+    """
+    Libère les ressources utilisées par l'affichage.
+    
+    Ferme le fichier vidéo si l'enregistrement était activé
+    et détruit toutes les fenêtres OpenCV.
+    """
     if video_writer is not None:
         video_writer.release()
     cv2.destroyAllWindows() 

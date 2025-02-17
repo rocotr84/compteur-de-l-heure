@@ -6,74 +6,82 @@ title Diagramme des fichiers Camera_macbeth_main
 package "Camera_macbeth_main" {
     package "MacbethNonlinearColorCorrection" {
         class modele_non_lineaire #87CEEB {
-            + params: np.array
-            + x: np.array
-            + execute(): np.array
+            + params: Vecteur de 15 paramètres
+            + x: Matrice (n,3) des couleurs d'entrée en BGR
+            ---
+            + execute(): Matrice (n,3) des couleurs transformées en BGR
         }
 
         class calibrer_transformation_non_lineaire #87CEEB {
-            + measured: np.array
-            + target: np.array
-            + execute(): np.array
+            + measured: Couleurs mesurées (n,3) en BGR, normalisées [0,1]
+            + target: Couleurs cibles (n,3) en BGR, normalisées [0,1]
+            ---
+            + execute(): Vecteur des 15 paramètres optimaux
         }
 
         class appliquer_correction_non_lineaire #87CEEB {
-            + image: np.array
-            + params: np.array
-            + execute(): np.array
+            + image: Image d'entrée en BGR (uint8)
+            + params: Vecteur des 15 paramètres de correction
+            ---
+            + execute(): Image corrigée en BGR (uint8)
         }
 
         class corriger_image #87CEEB {
-            + image: np.array
-            + cache_file: str
+            + image: Image d'entrée en BGR
+            + cache_file: Chemin vers le fichier de cache des positions des carrés
             + detect_squares: bool
-            + execute(): image corrigé au format BGR
+            + execute():  Image corrigée en BGR
         }
     }
 
     package "MacbethColorAndRectangleDetector" {
         class order_points #87CEEB {
-            + pts: np.array
-            + execute(): np.array
+            + pts: Tableau (4,2) de points (x,y)
+            ---
+            + execute(): Points ordonnés [haut-gauche, haut-droit, bas-droit, bas-gauche]
         }
 
         class detect_macbeth_in_scene #87CEEB {
-            + image: np.array
-            + cache_file: str
-            + execute(): tuple
+            + image: Image source en BGR
+            + cache_file: Chemin pour sauvegarder les résultats
+            ---
+            + execute(): tuple (image_redressée, liste_des_carrés)
         }
 
         class get_average_colors #87CEEB {
-            + image: np.array
-            + cache_file: str
+            + image: Image source en BGR
+            + cache_file: Chemin du fichier cache
             + detect_squares: bool
-            + execute(): liste de couleur
+            ---
+            + execute(): Liste de 24 tuples (B,G,R) représentant les couleurs moyennes
         }
     }
 
-    package "VideoProcessor" {
-            class init_video_processor {
-            + output_width : int
-            +output_height : int
-            + desired_fps: int
+    package "VideoProcessor"  {
+            class init_video_processor #00ff00 {
+            + output_width : Largeur souhaitée pour les frames de sortie en pixels
+            +output_height : Hauteur souhaitée pour les frames de sortie en pixels
+            + desired_fps: Nombre d'images par seconde souhaité pour la sortie
+            ---
             +execute(): void
         }
         
-        class load_mask {
-            + mask_path: str
+        class load_mask #00ff00 {
+            + mask_path:  Chemin vers le fichier de masque (format image)
+            ---
             + execute(): void
         }
 
-        class setup_video_capture {
-            + video_path: str
-            + execute(): cv2.VideoCapture
+        class setup_video_capture #00ff00 {
+            + video_path: Chemin vers le fichier vidéo
+            + execute(): cv2.VideoCapture, Objet de capture vidéo configuré
         }
 
         class process_frame #87CEEB {
-            + frame: np.array
-            + cache_file: str
+            + frame: Image à traiter (format BGR)
+            + cache_file: Chemin vers le fichier de cache pour la correction des couleurs
             + detect_squares: bool
-            + execute(): image traitée
+            + execute(): Image traitée avec les couleurs corrigées et le masque appliqué
         }
     }
 
@@ -94,79 +102,84 @@ package "Camera_macbeth_main" {
   }
   
   package "Tracker" {
-    class create_tracked_person {
-        + bbox: list
-        + id: int
-        + confidence: float
-        + execute(): dict
+    class create_tracked_person #ff0000 {
+        + bbox: Coordonnées de la boîte englobante (x1, y1, x2, y2)
+        + id: Identifiant unique de la personne
+        + confidence: Score de confiance de la détection
+        + execute(): Dictionnaire contenant les informations de suivi de la personne
     }
 
-    class get_center {
-        + bbox: list
-        + execute(): tuple
+    class get_center #ff0000 {
+        + bbox: Coordonnées de la boîte englobante (x1, y1, x2, y2)
+        + execute(): Coordonnées (x, y) du point central bas
     }
 
-    class update_person_position {
-        + person: dict
-        + bbox: list
+    class update_person_position #ff0000 {
+        + person: Dictionnaire de la personne à mettre à jour
+        + bbox: Nouvelles coordonnées de la boîte englobante
         + execute(): void
     }
 
-    class check_line_crossing {
-        + person: dict
-        + line_start: tuple
-        + line_end: tuple
-        + execute(): bool
+    class check_line_crossing #ff0000 {
+        + person: Dictionnaire de la personne à vérifier
+        + line_start: Point de départ de la ligne (x, y)
+        + line_end: Point d'arrivée de la ligne (x, y)
+        ---
+        + execute(): True si la personne traverse la ligne, False sinon
     }
 
-    class create_tracker {
-        + execute(): dict
+    class create_tracker #00ff00 {
+        + execute(): État initial du tracker avec modèle YOLO chargé
     }
 
-    class update_tracker {
-        + tracker_state: dict
-        + frame: np.array
-        + execute(): list
+    class update_tracker #ff0000 {
+        + tracker_state: État actuel du tracker
+        + frame: Image à analyser
+        + execute(): Liste des personnes actuellement suivies
     }
 
-    class mark_as_crossed {
-        + tracker_state: dict
-        + person_id: int
+    class mark_as_crossed #ff0000 {
+        + tracker_state: État du tracker
+        + person_id: Identifiant de la personne
         + execute(): void
     }
   }
 package "ColorDetector" {
-    class get_dominant_color {
-        + frame: np.array
-        + roi_coords: tuple
-        + execute(): str
+    class get_dominant_color #e67e22 {
+        + frame: Image complète au format BGR
+        + roi_coords: Coordonnées de la ROI sous forme (x1, y1, x2, y2)
+        ---
+        + execute(): Nom de la couleur dominante 
     }
 
-    class visualize_color {
-        + frame: np.array
-        + roi_coords: tuple
-        + color_name: str
+    class visualize_color #e67e22 {
+        + frame: Image sur laquelle dessiner (format BGR)
+        + roi_coords: Coordonnées de la ROI sous forme (x1, y1, x2, y2)
+        + color_name: Nom de la couleur détectée
         + execute(): void
     }
 }
 
   package "ColorWeighting" {
-    class get_color_weight {
-        + color: str
-        + current_time: float
-        + execute(): float
+    class get_color_weight #e67e22 {
+        + color: Identifiant de la couleur
+        + current_time: Timestamp actuel en secondes
+        + execute(): Poids entre MIN_COLOR_WEIGHT et 1.0
     }
 
-    class update_color_timestamp {
-        + color: str
-        + timestamp: float
+    class update_color_timestamp #e67e22 {
+        + color: Identifiant de la couleur à mettre à jour
+        + timestamp: imestamp spécifique.
+        ---
         + execute(): void
     }
 
-    class get_weighted_color_probabilities {
-        + color_counts: dict
-        + current_time: float
-        + execute(): dict
+    class get_weighted_color_probabilities #e67e22 {
+        + color_counts: Dictionnaire {couleur: nombre_de_pixels}
+        + current_time: Timestamp pour le calcul
+        ---
+        + execute(): Dictionnaire {couleur: compte_pondéré} avec les comptages ajustés
+              selon la pondération temporelle
     }
   }
 

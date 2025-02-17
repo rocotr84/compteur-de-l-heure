@@ -11,7 +11,20 @@ csv_file = None
 csv_writer = None
 
 def init_detection_history(output_file):
-    """Initialise l'historique des détections et le fichier CSV"""
+    """
+    Initialise l'historique des détections et crée/ouvre le fichier CSV de sortie.
+    
+    Cette fonction configure le système de journalisation des détections en ouvrant
+    un fichier CSV en mode ajout. Le fichier reste ouvert pour optimiser les performances
+    d'écriture.
+    
+    Args:
+        output_file (str): Chemin vers le fichier CSV de sortie
+    
+    Notes:
+        - Utilise les variables globales csv_file et csv_writer
+        - Le fichier est ouvert en mode 'append' avec buffering=1 pour une écriture immédiate
+    """
     global csv_file, csv_writer
     
     csv_file = open(output_file, 'a', newline='', buffering=1)
@@ -19,12 +32,33 @@ def init_detection_history(output_file):
 
 
 def update_color(person_id, value):
-    """Met à jour l'historique des valeurs pour un coureur."""
+    """
+    Met à jour l'historique des valeurs détectées pour un coureur.
+    
+    Ajoute une nouvelle détection de couleur à l'historique d'un coureur identifié.
+    Les valeurs sont stockées dans un dictionnaire global color_history.
+    
+    Args:
+        person_id (int): Identifiant unique du coureur
+        value (str): Valeur de couleur détectée (ou None si pas de détection)
+    """
     if value is not None:
         color_history[person_id].append(value)
 
 def get_dominant_value(person_id):
-    """Retourne la valeur la plus fréquente pour un ID"""
+    """
+    Détermine la valeur la plus fréquente pour un coureur donné.
+    
+    Analyse l'historique des détections pour un coureur et retourne
+    la valeur qui apparaît le plus souvent, permettant de filtrer
+    les détections erronées.
+    
+    Args:
+        person_id (int): Identifiant unique du coureur
+    
+    Returns:
+        str or None: La valeur la plus fréquente, ou None si aucune détection valide
+    """
     if not color_history[person_id]:
         return None
     
@@ -39,7 +73,24 @@ def get_dominant_value(person_id):
     return max(value_counts.items(), key=lambda x: x[1])[0]
 
 def record_crossing(person_id, elapsed_time):
-    """Enregistre le passage avec la couleur dominante et le temps écoulé"""
+    """
+    Enregistre le passage d'un coureur avec sa couleur dominante et le temps écoulé.
+    
+    Cette fonction :
+    1. Récupère la couleur dominante du coureur
+    2. Formate le timestamp et le temps écoulé
+    3. Enregistre les données dans le fichier CSV
+    4. Nettoie l'historique du coureur
+    
+    Args:
+        person_id (int): Identifiant unique du coureur
+        elapsed_time (float): Temps écoulé depuis le début en secondes
+    
+    Notes:
+        - Le format d'enregistrement CSV est: [timestamp, temps_écoulé, id_coureur, couleur]
+        - L'historique du coureur est effacé après l'enregistrement
+        - Utilise os.fsync pour garantir l'écriture sur le disque
+    """
     dominant_value = get_dominant_value(person_id)
     if dominant_value:
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -59,6 +110,12 @@ def record_crossing(person_id, elapsed_time):
         del color_history[person_id]
 
 def cleanup():
-    """Ferme proprement le fichier CSV"""
+    """
+    Ferme proprement le fichier CSV.
+    
+    Cette fonction doit être appelée à la fin du programme pour assurer
+    que toutes les données sont bien écrites et que les ressources
+    sont libérées correctement.
+    """
     if csv_file:
         csv_file.close() 

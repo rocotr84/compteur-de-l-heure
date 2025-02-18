@@ -1,20 +1,18 @@
 import cv2
 import numpy as np
 import easyocr
+from config import (
+    MIN_NUMBER_CONFIDENCE,
+    CONTRAST_CLIP_LIMIT,
+    CONTRAST_GRID_SIZE,
+    BINARY_BLOCK_SIZE,
+    BINARY_CONSTANT,
+    MORPHOLOGY_KERNEL_SIZE,
+    ROI_EXPANSION_RATIO
+)
 
 # Paramètres de détection OCR
 OCR_READER = easyocr.Reader(['en'], gpu=True)
-MIN_NUMBER_CONFIDENCE = 0.4
-
-# Paramètres de prétraitement d'image
-CONTRAST_CLIP_LIMIT = 2.0
-CONTRAST_GRID_SIZE = (8, 8)
-BINARY_BLOCK_SIZE = 11
-BINARY_CONSTANT = 2
-MORPHOLOGY_KERNEL_SIZE = (2, 2)
-
-# Paramètres de la ROI
-ROI_EXPANSION_RATIO = 0.2  # Agrandissement de 20% de la zone
 
 def preprocess_roi(roi):
     """

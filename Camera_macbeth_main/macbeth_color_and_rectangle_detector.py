@@ -211,11 +211,7 @@ def detect_macbeth_in_scene(frame_raw: np.ndarray, cache_file: str) -> tuple[np.
 
     return frame_warped, squares
 
-def get_average_colors(
-    frame_raw: np.ndarray, 
-    cache_file: str, 
-    detect_squares: bool
-) -> list[tuple[int, int, int]]:
+def get_average_colors(frame_raw: np.ndarray, cache_file: str, detect_squares: bool) -> list[tuple[int, int, int]]:
     """
     Calcule les couleurs moyennes des 24 carrés de la charte.
     

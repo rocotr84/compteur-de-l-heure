@@ -1,14 +1,17 @@
-import cv2
-import os
-import numpy as np
-from ultralytics import YOLO
-from config import *
 import signal
 import sys
 import torch
-import time
+from config import (
+    VIDEO_INPUT_PATH,
+    DETECTION_MASK_PATH,
+    CSV_OUTPUT_PATH,
+    CACHE_FILE_PATH,
+    DETECT_SQUARES,
+    DETECTION_MODE,
+    line_start,
+    line_end
+)
 from video_processor import (
-    init_video_processor,
     load_mask,
     setup_video_capture,
     process_frame
@@ -110,8 +113,6 @@ def initialize_system():
     init_detection_history(CSV_OUTPUT_PATH)
     print(f"Démarrage du suivi en mode {DETECTION_MODE}...")
 
-    # Initialisation du processeur vidéo
-    init_video_processor(output_width, output_height, desired_fps)
     detection_mask = load_mask(DETECTION_MASK_PATH)
     video_capture = setup_video_capture(VIDEO_INPUT_PATH)
 
@@ -123,7 +124,7 @@ def initialize_system():
 
     _, initial_frame = video_capture.read()
     if initial_frame is not None:
-        get_average_colors(initial_frame, CACHE_FILE_PATH, detect_squares=DETECT_SQUARES)
+        get_average_colors(initial_frame, CACHE_FILE_PATH, True)
     else:
         print("Impossible de lire la première frame de la vidéo.")
 

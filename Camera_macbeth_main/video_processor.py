@@ -2,28 +2,8 @@ import cv2
 import numpy as np
 from macbeth_nonlinear_color_correction import corriger_image
 import os
-# Variables globales pour stocker la configuration
-output_width: int = None  # type: ignore
-output_height: int = None  # type: ignore
-desired_fps: int = None  # type: ignore
+from config import output_width, output_height, desired_fps
 mask: np.ndarray | None = None
-
-def init_video_processor(width: int, height: int, fps: int) -> None:
-    """
-    Initialise le processeur vidéo avec les paramètres de sortie souhaités.
-    
-    Cette fonction configure les dimensions et la fréquence d'images pour le traitement vidéo.
-    Elle doit être appelée avant toute autre opération de traitement.
-    
-    Args:
-        width (int): Largeur souhaitée pour les frames de sortie en pixels
-        height (int): Hauteur souhaitée pour les frames de sortie en pixels
-        fps (int): Nombre d'images par seconde souhaité pour la sortie
-    """
-    global output_width, output_height, desired_fps
-    output_width = width
-    output_height = height
-    desired_fps = fps
 
 def load_mask(mask_path):
     """

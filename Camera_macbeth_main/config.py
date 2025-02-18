@@ -79,3 +79,15 @@ BINARY_CONSTANT = 2
 MORPHOLOGY_KERNEL_SIZE = (3, 3)
 ROI_EXPANSION_RATIO = 0.2
 
+# Paramètres d'optimisation de la correction des couleurs
+COLOR_CORRECTION_INTERVAL = 30  # Effectue la correction toutes les 30 frames
+
+# Couleurs de référence de la charte Macbeth en BGR
+MACBETH_REFERENCE_COLORS = np.array([
+        [68, 82, 115], [130, 150, 194], [157, 122, 98], [67, 108, 87], [177, 128, 133],
+        [170, 189, 103], [44, 126, 214], [166, 91, 80], [99, 90, 193], [108, 60, 94],
+        [64, 188, 157], [46, 163, 224], [150, 61, 56], [73, 148, 70], [60, 54, 175],
+        [31, 199, 231], [149, 86, 187], [161, 133, 8], [242, 243, 243], [200, 200, 200],
+        [160, 160, 160], [121, 122, 122], [85, 85, 85], [52, 52, 52]
+    ], dtype=np.float32)
+

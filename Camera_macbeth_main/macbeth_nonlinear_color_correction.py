@@ -17,6 +17,11 @@ import numpy as np
 import sys
 from scipy.optimize import least_squares
 from macbeth_color_and_rectangle_detector import get_average_colors
+from config import COLOR_CORRECTION_INTERVAL, MACBETH_REFERENCE_COLORS
+
+# Variables globales pour la mise en cache des coefficients
+last_correction_params = None
+frame_count = 0
 
 def modele_non_lineaire(correction_coefficients, colors_input):
     """
@@ -125,48 +130,34 @@ def appliquer_correction_non_lineaire(frame_masked, correction_coefficients):
 def corriger_image(frame_masked, cache_file, detect_squares):
     """
     Corrige les couleurs d'une image via la charte Macbeth.
-    
-    Cette fonction principale :
-    1. Récupère les couleurs moyennes des 24 patchs
-    2. Compare avec les couleurs cibles standard
-    3. Optimise la transformation non linéaire
-    4. Applique la correction à l'image entière
-    
-    Args:
-        frame_masked (np.array): Image d'entrée en BGR avec masque appliqué
-        cache_file (str): Chemin vers le fichier de cache des positions des carrés
-        detect_squares (bool): Si True, détecte les carrés, sinon utilise le cache
-    
-    Returns:
-        np.array: Image corrigée en BGR
-    
-    Raises:
-        ValueError: Si le nombre de patchs détectés ne correspond pas à 24
     """
-    # Récupération des couleurs moyennes des 24 patchs via get_average_colors (en BGR)
-    colors_measured = get_average_colors(frame_masked, cache_file, detect_squares)
-    colors_measured = np.array(colors_measured, dtype=np.float32)
-
-    # Définition des couleurs cibles standard de la charte Macbeth en BGR
-    colors_target = np.array([
-        [68, 82, 115], [130, 150, 194], [157, 122, 98], [67, 108, 87], [177, 128, 133],
-        [170, 189, 103], [44, 126, 214], [166, 91, 80], [99, 90, 193], [108, 60, 94],
-        [64, 188, 157], [46, 163, 224], [150, 61, 56], [73, 148, 70], [60, 54, 175],
-        [31, 199, 231], [149, 86, 187], [161, 133, 8], [242, 243, 243], [200, 200, 200],
-        [160, 160, 160], [121, 122, 122], [85, 85, 85], [52, 52, 52]
-    ], dtype=np.float32)
-
-    if colors_measured.shape[0] != colors_target.shape[0]:
-        raise ValueError("Erreur : Le nombre de patchs mesurés ne correspond pas au nombre de couleurs cibles (24).")
-
-    # Normalisation des couleurs dans l'intervalle [0,1]
-    colors_measured_norm = colors_measured / 255.0
-    colors_target_norm = colors_target / 255.0
-
-    # Calibration non linéaire pour obtenir les paramètres optimaux
-    params = calibrer_transformation_non_lineaire(colors_measured_norm, colors_target_norm)
-
-    # Application de la correction à l'image complète (en BGR) et retour
-    frame_corrected = appliquer_correction_non_lineaire(frame_masked, params)
-    return frame_corrected
+    global last_correction_params, frame_count
+    
+    try:
+        # Vérifier si on doit recalculer les paramètres
+        if frame_count % COLOR_CORRECTION_INTERVAL == 0 or last_correction_params is None or detect_squares:
+            # Si detect_squares est True, force le recalcul
+            colors_measured = np.array(get_average_colors(frame_masked, cache_file, detect_squares))
+            colors_target = np.array(MACBETH_REFERENCE_COLORS)
+            
+            if colors_measured.shape[0] != colors_target.shape[0]:
+                raise ValueError("Erreur : Le nombre de patchs mesurés ne correspond pas au nombre de couleurs cibles (24).")
+            
+            # Normalisation des couleurs dans l'intervalle [0,1]
+            colors_measured_norm = colors_measured / 255.0
+            colors_target_norm = colors_target / 255.0
+            
+            # Calibration non linéaire pour obtenir les paramètres optimaux
+            last_correction_params = calibrer_transformation_non_lineaire(colors_measured_norm, colors_target_norm)
+            print(f"Recalcul des paramètres de correction (frame {frame_count}, detect_squares={detect_squares})")
+        
+        # Application de la correction à l'image complète avec les derniers paramètres
+        frame_corrected = appliquer_correction_non_lineaire(frame_masked, last_correction_params)
+        
+        frame_count += 1
+        return frame_corrected
+        
+    except Exception as e:
+        print(f"Erreur lors de la correction des couleurs: {str(e)}")
+        return frame_masked
 

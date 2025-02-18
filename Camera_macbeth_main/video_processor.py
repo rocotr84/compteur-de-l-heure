@@ -2,8 +2,12 @@ import cv2
 import numpy as np
 from macbeth_nonlinear_color_correction import corriger_image
 import os
-from config import output_width, output_height, desired_fps
+from config import output_width, output_height, desired_fps, COLOR_CORRECTION_INTERVAL
 mask: np.ndarray | None = None
+
+# Variables globales pour la gestion de la correction des couleurs
+frame_count = 0
+last_correction_coefficients = None
 
 def load_mask(mask_path):
     """
@@ -100,13 +104,11 @@ def process_frame(frame_raw, cache_file, detect_squares):
     # Application du masque si disponible
     frame_masked = frame_resized
     if mask is not None:
-        # Vérification de la compatibilité des dimensions
         if mask.shape[:2] != frame_resized.shape[:2]:
             mask_resized = cv2.resize(mask, (frame_resized.shape[1], frame_resized.shape[0]))
             frame_masked = cv2.bitwise_and(frame_resized, frame_resized, mask=mask_resized)
-            cv2.imshow('Masque', frame_masked)
     
-    # Appel à la fonction corriger_image pour ajuster les couleurs
+    # Correction des couleurs (la gestion des frames est faite dans corriger_image)
     frame_corrected = corriger_image(frame_masked, cache_file, detect_squares)
     
     return frame_corrected

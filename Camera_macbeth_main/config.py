@@ -1,25 +1,23 @@
 import os
 from collections import defaultdict
-# Configuration des chemins d'accès
+import numpy as np
+
+# Définition du répertoire courant
 current_dir = os.path.dirname(__file__)
+
+# Chemins des ressources
 VIDEO_INPUT_PATH = os.path.join(current_dir, "..", "assets", "video", "p3_macbeth.mp4")
 MODEL_PATH = os.path.join(current_dir, "..", "assets", "models", "yolo11n.pt")
 DETECTION_MASK_PATH = os.path.join(current_dir, "..", "assets", "mask", "p3_macbeth_mask.jpg")
 CSV_OUTPUT_PATH = os.path.join(current_dir, "..", "Camera_macbeth_main", "detections.csv")
 CACHE_FILE_PATH = os.path.join(current_dir, "macbeth_cache.json")
 
-# Configuration des chemins d'accès aux ressources
-current_dir = os.path.dirname(__file__)
-video_path = os.path.join(current_dir, "..", "assets", "video", "p3_macbeth.mp4")
-#video_path = os.path.join(current_dir, "..", "assets", "photos","Macbeth", "IMG_3673.JPG")
-#video_path = os.path.join(current_dir, "..", "assets", "man_alone.mp4")
-#video_path = os.path.join(current_dir, "..", "assets", "video.mp4")
-modele_path = os.path.join(current_dir, "..", "assets", "models", "yolo11n.pt")
-mask_path = os.path.join(current_dir, "..", "assets", "mask", "p3_macbeth_mask.jpg")
-output_file = os.path.join(current_dir, "..", "Camera_macbeth_main", "detections.csv")
+# Configuration du système
+DETECT_SQUARES = False
+DETECTION_MODE = "color"  # "color" ou "number"
+
+# Paramètres d'initialisation
 detection_tracker = None
-cache_file = r"D:\Windsuft programme\compteur-de-l-heure\Camera_macbeth_main\macbeth_cache.json"
-detect_squares = False
 
 # Configuration des paramètres globaux
 MAX_DISAPPEAR_FRAMES = 15    # Nombre de frames avant de considérer une personne disparue
@@ -59,9 +57,6 @@ VIDEO_OUTPUT_PATH = "output.mp4"  # Chemin du fichier de sortie
 VIDEO_FPS = 30  # FPS pour la vidéo de sortie
 VIDEO_CODEC = 'mp4v'  # Codec vidéo (peut aussi être 'XVID' pour .avi)
 
-# Configuration du mode de détection
-DETECTION_MODE = "color"  # "color" ou "number"
-
 # Configuration de la détection des couleurs
 COLOR_MIN_PIXEL_RATIO = 0.15
 COLOR_MIN_PIXEL_COUNT = 100
@@ -76,3 +71,4 @@ DETECTION_HISTORY = defaultdict(list)
 # Paramètres de détection et de suivi
 MIN_CONFIDENCE = 0.5
 MIN_NUMBER_CONFIDENCE = 0.4
+

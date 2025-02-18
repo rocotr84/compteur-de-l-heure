@@ -3,12 +3,12 @@ import numpy as np
 from macbeth_nonlinear_color_correction import corriger_image
 import os
 # Variables globales pour stocker la configuration
-output_width = None
-output_height = None
-desired_fps = None
-mask = None
+output_width: int = None  # type: ignore
+output_height: int = None  # type: ignore
+desired_fps: int = None  # type: ignore
+mask: np.ndarray | None = None
 
-def init_video_processor(width, height, fps):
+def init_video_processor(width: int, height: int, fps: int) -> None:
     """
     Initialise le processeur vidéo avec les paramètres de sortie souhaités.
     
@@ -43,11 +43,13 @@ def load_mask(mask_path):
     global mask
     print(f"Tentative de chargement du masque depuis: {mask_path}")
 
-    def create_default_mask():
+    def create_default_mask() -> None:
         """
         Crée un masque blanc par défaut.
         """
         global mask
+        if output_width is None or output_height is None:
+            raise ValueError("Les dimensions de sortie doivent être initialisées avant de créer le masque")
         mask = np.ones((output_height, output_width), dtype=np.uint8) * 255
         print("Création d'un masque blanc par défaut")
 

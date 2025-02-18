@@ -1,5 +1,7 @@
 import cv2
+import numpy as np
 import time
+from typing import Optional
 from config import (frame_delay, SHOW_TRAJECTORIES, SAVE_VIDEO, VIDEO_OUTPUT_PATH, 
                    VIDEO_FPS, VIDEO_CODEC, output_width, output_height, DETECTION_MODE)
 from color_detector import get_dominant_color, visualize_color
@@ -7,17 +9,19 @@ from number_detector import get_number, visualize_number
 
 # Variables globales pour la gestion de l'affichage
 display_window_name = "Tracking"
-video_output_writer = None
+video_output_writer: Optional[cv2.VideoWriter] = None
 display_start_time = time.time()
 
-def init_display():
+def init_display() -> None:
     """
     Initialise le gestionnaire d'affichage.
     Configure le VideoWriter si l'enregistrement vidéo est activé.
     """
     global video_output_writer
     if SAVE_VIDEO:
-        video_codec = cv2.VideoWriter_fourcc(*VIDEO_CODEC)
+        # Utilisation de getattr pour éviter l'erreur de typage
+        fourcc_func = getattr(cv2, 'VideoWriter_fourcc')
+        video_codec = fourcc_func(*VIDEO_CODEC)
         video_output_writer = cv2.VideoWriter(
             VIDEO_OUTPUT_PATH,
             video_codec,
@@ -223,7 +227,7 @@ def draw_timer(frame_display):
     
     return elapsed_time
 
-def show_frame(frame_display):
+def show_frame(frame_display: np.ndarray) -> tuple[bool, float]:
     """
     Affiche ou enregistre la frame selon la configuration.
     
@@ -232,23 +236,21 @@ def show_frame(frame_display):
     souhaite quitter (touche 'q').
     
     Args:
-        frame (np.array): Image à afficher/enregistrer
+        frame_display (np.ndarray): Image à afficher/enregistrer
     
     Returns:
-        tuple: (bool, float)
-            - bool: True si l'utilisateur souhaite quitter, False sinon
-            - float: Temps écoulé en secondes
+        tuple[bool, float]: (quit_flag, elapsed_time)
     """
     elapsed_time = draw_timer(frame_display)
     
-    if SAVE_VIDEO:
+    if SAVE_VIDEO and video_output_writer is not None:
         video_output_writer.write(frame_display)
         return False, elapsed_time
     else:
         cv2.imshow(display_window_name, frame_display)
         return cv2.waitKey(1) & 0xFF == ord('q'), elapsed_time
 
-def release_display():
+def release_display() -> None:
     """
     Libère les ressources utilisées par l'affichage.
     

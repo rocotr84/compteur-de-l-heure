@@ -15,15 +15,15 @@ import numpy as np
 import json
 import os
 
-def order_points(pts):
+def order_points(pts: np.ndarray) -> np.ndarray:
     """
     Ordonne 4 points pour former un rectangle cohérent.
     
     Args:
-        pts (np.array): Tableau (4,2) de points (x,y)
+        pts (np.ndarray): Tableau (4,2) de points (x,y)
     
     Returns:
-        np.array: Points ordonnés [haut-gauche, haut-droit, bas-droit, bas-gauche]
+        np.ndarray: Points ordonnés [haut-gauche, haut-droit, bas-droit, bas-gauche]
     """
     rect = np.zeros((4, 2), dtype="float32")
     s = pts.sum(axis=1)
@@ -34,7 +34,7 @@ def order_points(pts):
     rect[3] = pts[np.argmax(diff)]  # bas-gauche
     return rect
 
-def detect_macbeth_in_scene(frame_raw, cache_file):
+def detect_macbeth_in_scene(frame_raw: np.ndarray, cache_file: str) -> tuple[np.ndarray, list[tuple[int, int, int, int]]]:
     """
     Détecte et analyse la charte Macbeth dans une image.
     
@@ -45,11 +45,11 @@ def detect_macbeth_in_scene(frame_raw, cache_file):
     4. Sauvegarde des résultats dans le cache
     
     Args:
-        frame_raw (np.array): Image source en BGR
+        frame_raw (np.ndarray): Image source en BGR
         cache_file (str): Chemin pour sauvegarder les résultats
     
     Returns:
-        tuple: (image_redressée, liste_des_carrés)
+        tuple[np.ndarray, list[tuple[int, int, int, int]]]: (image_redressée, liste_des_carrés)
         
     Raises:
         ValueError: Si l'image est invalide ou si la charte n'est pas détectée
@@ -59,7 +59,10 @@ def detect_macbeth_in_scene(frame_raw, cache_file):
 
     # Détection du cadre noir
     frame_hsv = cv2.cvtColor(frame_raw, cv2.COLOR_BGR2HSV)
-    frame_black_mask = cv2.inRange(frame_hsv, (0, 0, 0), (180, 100, 30))
+    # Conversion des tuples en np.array pour les seuils
+    lower_black = np.array([0, 0, 0], dtype=np.uint8)
+    upper_black = np.array([180, 100, 30], dtype=np.uint8)
+    frame_black_mask = cv2.inRange(frame_hsv, lower_black, upper_black)
 
     # Nettoyage du masque
     morphology_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 7))
@@ -118,7 +121,9 @@ def detect_macbeth_in_scene(frame_raw, cache_file):
     color_squares_contours, _ = cv2.findContours(frame_warped_edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     
     # Détection initiale des carrés
-    detected_squares = []
+    detected_squares: list[tuple[int, int, int, int]] = []
+    squares: list[tuple[int, int, int, int]] = []
+    
     for c in color_squares_contours:
         peri = cv2.arcLength(c, True)
         approx = cv2.approxPolyDP(c, 0.02 * peri, True)
@@ -206,12 +211,16 @@ def detect_macbeth_in_scene(frame_raw, cache_file):
 
     return frame_warped, squares
 
-def get_average_colors(frame_raw, cache_file, detect_squares):
+def get_average_colors(
+    frame_raw: np.ndarray, 
+    cache_file: str, 
+    detect_squares: bool
+) -> list[tuple[int, int, int]]:
     """
     Calcule les couleurs moyennes des 24 carrés de la charte.
     
     Args:
-        frame_raw (np.array): Image source en BGR
+        frame_raw (np.ndarray): Image source en BGR
         cache_file (str): Chemin du fichier cache
         detect_squares (bool): Si True, détecte les carrés, sinon utilise le cache
     

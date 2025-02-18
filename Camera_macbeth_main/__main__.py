@@ -107,13 +107,13 @@ def initialize_system():
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
 
-    init_detection_history(output_file)
+    init_detection_history(CSV_OUTPUT_PATH)
     print(f"Démarrage du suivi en mode {DETECTION_MODE}...")
 
     # Initialisation du processeur vidéo
     init_video_processor(output_width, output_height, desired_fps)
-    detection_mask = load_mask(mask_path)
-    video_capture = setup_video_capture(video_path)
+    detection_mask = load_mask(DETECTION_MASK_PATH)
+    video_capture = setup_video_capture(VIDEO_INPUT_PATH)
 
     tracker_state = create_tracker()
     init_display()  # Initialisation de l'affichage
@@ -123,7 +123,7 @@ def initialize_system():
 
     _, initial_frame = video_capture.read()
     if initial_frame is not None:
-        get_average_colors(initial_frame, cache_file, detect_squares=True)
+        get_average_colors(initial_frame, CACHE_FILE_PATH, detect_squares=DETECT_SQUARES)
     else:
         print("Impossible de lire la première frame de la vidéo.")
 
@@ -158,7 +158,7 @@ def main():
             if not ret:
                 break
                 
-            processed_frame = process_frame(current_frame, cache_file, detect_squares)
+            processed_frame = process_frame(current_frame, CACHE_FILE_PATH, DETECT_SQUARES)
             tracked_persons = update_tracker(tracker_state, processed_frame)
             
             persons_to_process = []

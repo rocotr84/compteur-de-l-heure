@@ -1,34 +1,46 @@
 import csv
 from collections import defaultdict
 from datetime import datetime
-from pathlib import Path
 import os
-from config import DETECTION_MODE
-
+import sqlite3
+from config import SAVE_SQL, CSV_OUTPUT_PATH, SQL_DB_PATH
 # Variables globales pour la gestion de l'historique des détections
 person_detection_history = defaultdict(list)  # {person_id: [liste des valeurs détectées]}
 csv_output_file = None
 csv_output_writer = None
+db_connection = None
+db_cursor = None
 
-def init_detection_history(csv_file_path):
+def init_detection_history():
     """
-    Initialise l'historique des détections et crée/ouvre le fichier CSV de sortie.
-    
-    Cette fonction configure le système de journalisation des détections en ouvrant
-    un fichier CSV en mode ajout. Le fichier reste ouvert pour optimiser les performances
-    d'écriture.
-    
-    Args:
-        csv_file_path (str): Chemin vers le fichier CSV de sortie
-                   
-    Notes:
-        - Utilise les variables globales csv_file et csv_writer
-        - Le fichier est ouvert en mode 'append' avec buffering=1 pour une écriture immédiate
+    Initialise l'historique des détections selon le mode choisi (CSV ou SQLite).
     """
-    global csv_output_file, csv_output_writer
+    global csv_output_file, csv_output_writer, db_connection, db_cursor
     
-    csv_output_file = open(csv_file_path, 'a', newline='', buffering=1)
-    csv_output_writer = csv.writer(csv_output_file)
+    if SAVE_SQL:
+        try:
+            db_connection = sqlite3.connect(SQL_DB_PATH)
+            db_cursor = db_connection.cursor()
+            
+            # Création de la table si elle n'existe pas
+            db_cursor.execute('''
+                CREATE TABLE IF NOT EXISTS detections (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp TEXT NOT NULL,
+                    person_id INTEGER NOT NULL,
+                    detected_value TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            db_connection.commit()
+            print(f"Base de données SQLite initialisée : {SQL_DB_PATH}")
+        except sqlite3.Error as e:
+            print(f"Erreur lors de l'initialisation de SQLite : {e}")
+    else:
+        # Initialisation CSV
+        csv_output_file = open(CSV_OUTPUT_PATH, 'a', newline='', buffering=1)
+        csv_output_writer = csv.writer(csv_output_file)
+        print(f"Fichier CSV initialisé : {CSV_OUTPUT_PATH}")
 
 def update_detection_value(person_id, detected_value):
     """
@@ -73,51 +85,53 @@ def get_dominant_detection(person_id):
     
     return max(detection_frequencies.items(), key=lambda x: x[1])[0]
 
-def record_crossing(person_id, current_elapsed_time):
+def record_crossing(person_id, formatted_time):
     """
-    Enregistre le passage d'une personne avec sa valeur dominante et le temps écoulé.
-    
-    Cette fonction :
-    1. Récupère la valeur dominante de la personne
-    2. Formate le timestamp et le temps écoulé
-    3. Enregistre les données dans le fichier CSV
-    4. Nettoie l'historique de la personne
+    Enregistre le passage d'une personne selon le mode choisi.
     
     Args:
         person_id (int): Identifiant unique de la personne
-        current_elapsed_time (float): Temps écoulé depuis le début en secondes
-            
-    Notes:
-        - Le format d'enregistrement CSV est: [timestamp, temps_écoulé, id_coureur, couleur]
-        - L'historique du coureur est effacé après l'enregistrement
-        - Utilise os.fsync pour garantir l'écriture sur le disque
+        formatted_time (str): Heure système formatée
     """
     dominant_detection = get_dominant_detection(person_id)
-    if dominant_detection and csv_output_writer and csv_output_file:
-        crossing_timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        minutes_elapsed = int(current_elapsed_time // 60)
-        seconds_elapsed = int(current_elapsed_time % 60)
-        formatted_elapsed_time = f"{minutes_elapsed:02d}:{seconds_elapsed:02d}"
-        
-        try:
-            csv_output_writer.writerow([crossing_timestamp, formatted_elapsed_time, person_id, dominant_detection])
-            csv_output_file.flush()
-            os.fsync(csv_output_file.fileno())
-            print(f"Enregistrement CSV réussi : {crossing_timestamp}, {formatted_elapsed_time}, "
-                  f"{person_id}, {dominant_detection}")
-        except Exception as e:
-            print(f"Erreur d'enregistrement CSV : {e}")
+    if dominant_detection:
+        if SAVE_SQL and db_connection and db_cursor:
+            try:
+                db_cursor.execute('''
+                    INSERT INTO detections (timestamp, person_id, detected_value)
+                    VALUES (?, ?, ?)
+                ''', (formatted_time, person_id, dominant_detection))
+                db_connection.commit()
+                print(f"Enregistrement SQLite réussi : {formatted_time}, "
+                      f"{person_id}, {dominant_detection}")
+            except sqlite3.Error as e:
+                print(f"Erreur d'enregistrement SQLite : {e}")
+        elif not SAVE_SQL and csv_output_writer is not None and csv_output_file is not None:
+            try:
+                csv_output_writer.writerow([formatted_time, person_id, dominant_detection])
+                csv_output_file.flush()
+                os.fsync(csv_output_file.fileno())
+                print(f"Enregistrement CSV réussi : {formatted_time}, "
+                      f"{person_id}, {dominant_detection}")
+            except Exception as e:
+                print(f"Erreur d'enregistrement CSV : {e}")
+        else:
+            print("Erreur : Aucun système de stockage n'est correctement initialisé")
     
     if person_id in person_detection_history:
         del person_detection_history[person_id]
 
 def cleanup():
     """
-    Ferme proprement le fichier CSV.
-    
-    Cette fonction doit être appelée à la fin du programme pour assurer
-    que toutes les données sont bien écrites et que les ressources
-    sont libérées correctement.
+    Ferme proprement les connexions selon le mode utilisé.
     """
-    if csv_output_file:
-        csv_output_file.close() 
+    if SAVE_SQL and db_connection:
+        try:
+            db_connection.close()
+            print("Connexion à la base de données fermée")
+        except sqlite3.Error as e:
+            print(f"Erreur lors de la fermeture de la base de données : {e}")
+    else:
+        if csv_output_file:
+            csv_output_file.close()
+            print("Fichier CSV fermé") 

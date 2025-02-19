@@ -2,17 +2,19 @@ import cv2
 import numpy as np
 from macbeth_nonlinear_color_correction import corriger_image
 import os
-from config import output_width, output_height, desired_fps, COLOR_RANGES, COLOR_MASKS
-from numba import njit, prange
+from config import (output_width, output_height, desired_fps, 
+                   COLOR_RANGES, COLOR_MASKS, DETECTION_MASK_PATH, 
+                   CACHE_FILE_PATH)
+from numba import njit
 from functools import lru_cache
 
 # Variables globales
 mask: np.ndarray | None = None
-resized_mask: np.ndarray | None = None  # Nouvelle variable pour le masque pré-calculé
+resized_mask: np.ndarray | None = None
 frame_count = 0
 last_correction_coefficients = None
 
-def load_mask(mask_path):
+def load_mask():
     """
     Charge et prépare le masque pour le traitement vidéo.
     
@@ -20,15 +22,12 @@ def load_mask(mask_path):
     elle crée un masque blanc par défaut. Le masque est automatiquement redimensionné
     aux dimensions de sortie configurées.
     
-    Args:
-        mask_path (str): Chemin vers le fichier de masque (format image)
-    
     Notes:
         Le masque est stocké dans la variable globale 'mask'
         En cas d'erreur, un masque blanc est créé par défaut
     """
     global mask, resized_mask
-    print(f"Tentative de chargement du masque depuis: {mask_path}")
+    print(f"Tentative de chargement du masque depuis: {DETECTION_MASK_PATH}")
 
     def create_default_mask() -> None:
         """Crée un masque blanc par défaut aux dimensions de sortie."""
@@ -36,20 +35,20 @@ def load_mask(mask_path):
         if output_width is None or output_height is None:
             raise ValueError("Les dimensions de sortie doivent être initialisées")
         mask = np.ones((output_height, output_width), dtype=np.uint8) * 255
-        resized_mask = mask.copy()  # Pas besoin de redimensionner car déjà aux bonnes dimensions
+        resized_mask = mask.copy()
         print("Création d'un masque blanc par défaut")
 
     try:
-        if not os.path.exists(mask_path):
-            print(f"ERREUR: Le fichier de masque n'existe pas: {mask_path}")
+        if not os.path.exists(DETECTION_MASK_PATH):
+            print(f"ERREUR: Le fichier de masque n'existe pas: {DETECTION_MASK_PATH}")
             create_default_mask()
             return
 
         # Chargement du masque en niveaux de gris
-        mask = cv2.imread(mask_path, 0)
+        mask = cv2.imread(DETECTION_MASK_PATH, 0)
         
         if mask is None:
-            print(f"ERREUR: Impossible de charger le masque: {mask_path}")
+            print(f"ERREUR: Impossible de charger le masque: {DETECTION_MASK_PATH}")
             create_default_mask()
         else:
             # Pré-calcul du masque redimensionné une seule fois
@@ -107,7 +106,7 @@ def get_resize_matrix(input_shape):
     
     return cv2.getAffineTransform(src_points, dst_points)
 
-@njit(nopython=True)
+@njit
 def _apply_single_mask(frame, mask):
     """
     Applique un masque unique à une frame en utilisant Numba pour l'optimisation.
@@ -135,7 +134,7 @@ def apply_masks_batch(frames, masks):
     return np.array([_apply_single_mask(frame, mask) 
                     for frame, mask in zip(frames, masks)])
 
-def process_frame(frame_raw, cache_file, detect_squares):
+def process_frame(frame_raw, detect_squares):
     """
     Traite une frame individuelle de la vidéo.
     
@@ -146,15 +145,10 @@ def process_frame(frame_raw, cache_file, detect_squares):
     
     Args:
         frame_raw (np.array): Image brute à traiter (format BGR)
-        cache_file (str): Chemin vers le fichier de cache pour la correction des couleurs
         detect_squares (bool): Si True, détecte les carrés Macbeth, sinon utilise le cache
     
     Returns:
         np.array: Image traitée avec les couleurs corrigées et le masque appliqué
-    
-    Notes:
-        Le masque est redimensionné automatiquement si ses dimensions ne correspondent
-        pas à celles de la frame
     """
     try:
         # Éviter le redimensionnement si les dimensions sont déjà correctes
@@ -174,7 +168,7 @@ def process_frame(frame_raw, cache_file, detect_squares):
             frame_masked = frame_resized
         
         # Correction des couleurs avec gestion des erreurs
-        frame_corrected = corriger_image(frame_masked, cache_file, detect_squares)
+        frame_corrected = corriger_image(frame_masked, CACHE_FILE_PATH, detect_squares)
         if frame_corrected is None:
             print("Erreur: La correction des couleurs a échoué")
             return frame_masked

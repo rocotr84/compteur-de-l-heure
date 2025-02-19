@@ -14,6 +14,7 @@ import cv2
 import numpy as np
 import json
 import os
+from config import CACHE_FILE_PATH
 
 def order_points(pts: np.ndarray) -> np.ndarray:
     """
@@ -34,7 +35,7 @@ def order_points(pts: np.ndarray) -> np.ndarray:
     rect[3] = pts[np.argmax(diff)]  # bas-gauche
     return rect
 
-def detect_macbeth_in_scene(frame_raw: np.ndarray, cache_file: str) -> tuple[np.ndarray, list[tuple[int, int, int, int]]]:
+def detect_macbeth_in_scene(frame_raw: np.ndarray) -> tuple[np.ndarray, list[tuple[int, int, int, int]]]:
     """
     Détecte et analyse la charte Macbeth dans une image.
     
@@ -46,7 +47,6 @@ def detect_macbeth_in_scene(frame_raw: np.ndarray, cache_file: str) -> tuple[np.
     
     Args:
         frame_raw (np.ndarray): Image source en BGR
-        cache_file (str): Chemin pour sauvegarder les résultats
     
     Returns:
         tuple[np.ndarray, list[tuple[int, int, int, int]]]: (image_redressée, liste_des_carrés)
@@ -55,7 +55,7 @@ def detect_macbeth_in_scene(frame_raw: np.ndarray, cache_file: str) -> tuple[np.
         ValueError: Si l'image est invalide ou si la charte n'est pas détectée
     """
     if frame_raw is None:
-        raise ValueError("Image invalide")
+        raise ValueError("Image invalide")  
 
     # Détection du cadre noir
     frame_hsv = cv2.cvtColor(frame_raw, cv2.COLOR_BGR2HSV)
@@ -114,8 +114,8 @@ def detect_macbeth_in_scene(frame_raw: np.ndarray, cache_file: str) -> tuple[np.
     frame_warped = cv2.warpPerspective(frame_raw, perspective_matrix, (target_width, target_height))
 
     # Chemins des fichiers de sortie
-    warped_image_path = cache_file.replace('.json', '_warped.png')
-    annotated_image_path = cache_file.replace('.json', '_warped_with_squares.png')
+    warped_image_path = CACHE_FILE_PATH.replace('.json', '_warped.png')
+    annotated_image_path = CACHE_FILE_PATH.replace('.json', '_warped_with_squares.png')
     cv2.imwrite(warped_image_path, frame_warped)
 
     # Détection des carrés de couleur
@@ -209,18 +209,17 @@ def detect_macbeth_in_scene(frame_raw: np.ndarray, cache_file: str) -> tuple[np.
         "warped_image_path": warped_image_path,
         "warped_with_squares_path": annotated_image_path
     }
-    with open(cache_file, "w") as f:
+    with open(CACHE_FILE_PATH, "w") as f:
         json.dump(data, f)
 
     return frame_warped, squares
 
-def get_average_colors(frame_raw: np.ndarray, cache_file: str, detect_squares: bool) -> list[tuple[int, int, int]]:
+def get_average_colors(frame_raw: np.ndarray, detect_squares: bool) -> list[tuple[int, int, int]]:
     """
     Calcule les couleurs moyennes des 24 carrés de la charte.
     
     Args:
         frame_raw (np.ndarray): Image source en BGR
-        cache_file (str): Chemin du fichier cache
         detect_squares (bool): Si True, détecte les carrés, sinon utilise le cache
     
     Returns:
@@ -230,8 +229,8 @@ def get_average_colors(frame_raw: np.ndarray, cache_file: str, detect_squares: b
         ValueError: Si le cache est invalide ou si la détection échoue
     """
     if not detect_squares:
-        if os.path.exists(cache_file):
-            with open(cache_file, "r") as f:
+        if os.path.exists(CACHE_FILE_PATH):
+            with open(CACHE_FILE_PATH, "r") as f:
                 data = json.load(f)
             squares = [tuple(item) for item in data["squares"]]
             warped_path = data.get("warped_image_path")
@@ -242,7 +241,7 @@ def get_average_colors(frame_raw: np.ndarray, cache_file: str, detect_squares: b
         else:
             raise ValueError("Fichier cache non trouvé")
     else:
-        frame_warped, squares = detect_macbeth_in_scene(frame_raw, cache_file=cache_file)
+        frame_warped, squares = detect_macbeth_in_scene(frame_raw)
 
     if frame_warped is None:
         raise ValueError("Impossible d'obtenir l'image transformée")

@@ -4,15 +4,12 @@ import time
 from typing import Optional
 from config import (SHOW_ROI_AND_COLOR, SHOW_TRAJECTORIES, 
                    SHOW_CENTER, SHOW_LABELS, SAVE_VIDEO, VIDEO_OUTPUT_PATH, 
-                   VIDEO_FPS, VIDEO_CODEC, output_width, output_height, 
-                   DETECTION_MODE)
+                   VIDEO_FPS, VIDEO_CODEC, output_width, output_height)
 from color_detector import get_dominant_color, visualize_color
-#from number_detector import get_number, visualize_number
+from datetime import datetime
 
 # Variables globales pour la gestion de l'affichage
-display_window_name = "Tracking"
 video_output_writer: Optional[cv2.VideoWriter] = None
-display_start_time = time.time()
 
 def init_display() -> None:
     """
@@ -28,7 +25,8 @@ def init_display() -> None:
             VIDEO_OUTPUT_PATH,
             video_codec,
             VIDEO_FPS,
-            (output_width, output_height)
+            (
+                output_width, output_height)
         )
 
 def draw_person(frame_display, tracked_person_data):
@@ -93,10 +91,10 @@ def _draw_person_label(frame_display, tracked_person_data, label_pos_x, label_po
     """
     person_id = f"{int(tracked_person_data['id'])}"
     
-    if DETECTION_MODE == "color" and tracked_person_data['value']:
+    if tracked_person_data['value']:
         color_display_names = {
             "rouge_fonce": "rouge fonce",
-            "bleu_fonce": "bleu fonce",
+            "bleu_fonce": "bleu fonce", 
             "bleu_clair": "bleu clair",
             "vert_fonce": "vert fonce",
             "vert_clair": "vert clair",
@@ -108,8 +106,6 @@ def _draw_person_label(frame_display, tracked_person_data, label_pos_x, label_po
         }
         display_color_name = color_display_names.get(tracked_person_data['value'], tracked_person_data['value'])
         label_text = f"{person_id} - {display_color_name}"
-    elif DETECTION_MODE == "number" and tracked_person_data['value']:
-        label_text = f"{person_id} - N°{tracked_person_data['value']}"
     else:
         label_text = person_id
         
@@ -206,50 +202,48 @@ def draw_crossing_line(frame_display, line_start_point, line_end_point):
 
 def draw_timer(frame_display):
     """
-    Affiche le chronomètre sur l'image.
-    
-    Affiche le temps écoulé depuis le début au format MM:SS
-    en haut à gauche de l'image.
+    Affiche l'heure système sur l'image.
     
     Args:
-        frame (np.array): Image sur laquelle afficher le timer
-    
+        frame_display (np.array): Image sur laquelle afficher l'horodatage
     Returns:
-        float: Temps écoulé en secondes depuis le début
+        tuple[float, str]: (timestamp en secondes, heure formatée)
     """
-    elapsed_time = time.time() - display_start_time
-    minutes_elapsed = int(elapsed_time // 60)
-    seconds_elapsed = int(elapsed_time % 60)
-    timer_text = f"{minutes_elapsed:02d}:{seconds_elapsed:02d}"
+    current_time = datetime.now()
+    formatted_time = current_time.strftime("%Y-%m-%d %H:%M:%S")
+    system_time = current_time.strftime("%H:%M:%S")
+    system_time_text = f"Heure: {system_time}"
     
-    cv2.putText(frame_display, timer_text, 
-                (10, 30),
-                cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+    frame_height = frame_display.shape[0]
     
-    return elapsed_time
+    cv2.putText(frame_display,
+                system_time_text,
+                (10, frame_height - 20),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                1,
+                (255, 255, 255),
+                2)
+    
+    return current_time.timestamp(), formatted_time
 
-def show_frame(frame_display: np.ndarray) -> tuple[bool, float]:
+def show_frame(frame_display: np.ndarray) -> tuple[bool, float, str]:
     """
     Affiche ou enregistre la frame selon la configuration.
-    
-    Si SAVE_VIDEO est activé, enregistre la frame dans le fichier vidéo.
-    Sinon, affiche la frame dans une fenêtre et vérifie si l'utilisateur
-    souhaite quitter (touche 'q').
     
     Args:
         frame_display (np.ndarray): Image à afficher/enregistrer
     
     Returns:
-        tuple[bool, float]: (quit_flag, elapsed_time)
+        tuple[bool, float, str]: (quit_flag, timestamp, formatted_time)
     """
-    elapsed_time = draw_timer(frame_display)
+    timestamp, formatted_time = draw_timer(frame_display)
     
     if SAVE_VIDEO and video_output_writer is not None:
         video_output_writer.write(frame_display)
-        return False, elapsed_time
+        return False, timestamp, formatted_time
     else:
-        cv2.imshow(display_window_name, frame_display)
-        return cv2.waitKey(1) & 0xFF == ord('q'), elapsed_time
+        cv2.imshow("Tracking", frame_display)
+        return cv2.waitKey(1) & 0xFF == ord('q'), timestamp, formatted_time
 
 def release_display() -> None:
     """

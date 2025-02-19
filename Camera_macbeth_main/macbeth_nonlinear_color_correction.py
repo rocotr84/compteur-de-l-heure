@@ -12,15 +12,12 @@ Principe de la correction :
     mesurées et les couleurs cibles de la charte Macbeth.
 """
 
-import cv2
+
 import numpy as np
 from scipy.optimize import least_squares
 from numba import njit, prange
-import sys
 from macbeth_color_and_rectangle_detector import get_average_colors
 from config import COLOR_CORRECTION_INTERVAL, MACBETH_REFERENCE_COLORS
-
-
 # Variables globales pour la mise en cache des coefficients
 last_correction_params = None
 frame_count = 0
@@ -152,7 +149,7 @@ def corriger_image(frame_masked, cache_file, detect_squares):
         # Vérifier si on doit recalculer les paramètres
         if frame_count % COLOR_CORRECTION_INTERVAL == 0 or last_correction_params is None or detect_squares:
             # Si detect_squares est True, force le recalcul
-            colors_measured = np.array(get_average_colors(frame_masked, cache_file, detect_squares))
+            colors_measured = np.array(get_average_colors(frame_masked, detect_squares))
             colors_target = np.array(MACBETH_REFERENCE_COLORS)
             
             if colors_measured.shape[0] != colors_target.shape[0]:

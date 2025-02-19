@@ -3,11 +3,7 @@ import sys
 import torch
 from config import (
     VIDEO_INPUT_PATH,
-    DETECTION_MASK_PATH,
-    CSV_OUTPUT_PATH,
-    CACHE_FILE_PATH,
     DETECT_SQUARES,
-    DETECTION_MODE,
     line_start,
     line_end
 )
@@ -78,20 +74,35 @@ def signal_handler(signal_received, frame):
 def setup_device():
     """
     Configure le dispositif de calcul (GPU/CPU) pour le traitement.
-    
-    Détecte la présence d'un GPU compatible CUDA et configure
-    l'environnement en conséquence.
-    
-    Returns:
-        torch.device: Dispositif de calcul configuré (GPU ou CPU)
     """
-    if torch.cuda.is_available():
-        compute_device = torch.device("cuda")
-        print(f"GPU détectée: {torch.cuda.get_device_name()}")
-    else:
-        compute_device = torch.device("cpu")
-        print("GPU non disponible, utilisation du CPU")
-    return compute_device
+    try:
+        if not torch.cuda.is_available():
+            print("CUDA n'est pas disponible")
+            print(f"Version PyTorch: {torch.__version__}")
+            return torch.device("cpu")
+        
+        # Vérification plus détaillée du GPU
+        gpu_count = torch.cuda.device_count()
+        if gpu_count == 0:
+            print("Aucun GPU détecté")
+            return torch.device("cpu")
+            
+        # Sélection du premier GPU disponible
+        compute_device = torch.device("cuda:0")
+        print(f"GPU détectée: {torch.cuda.get_device_name(0)}")
+        print(f"Nombre de GPUs: {gpu_count}")
+        print(f"Version CUDA: {torch.cuda.get_device_capability(0)}")
+        
+        # Test rapide pour vérifier que le GPU fonctionne
+        test_tensor = torch.tensor([1.0], device=compute_device)
+        if test_tensor.device.type == "cuda":
+            print("Test GPU réussi")
+        
+        return compute_device
+        
+    except Exception as e:
+        print(f"Erreur lors de la configuration du GPU: {str(e)}")
+        return torch.device("cpu")
 
 def initialize_system():
     """
@@ -110,8 +121,7 @@ def initialize_system():
         signal.signal(signal.SIGINT, signal_handler)
         signal.signal(signal.SIGTERM, signal_handler)
 
-        init_detection_history(CSV_OUTPUT_PATH)
-        print(f"Démarrage du suivi en mode {DETECTION_MODE}...")
+        init_detection_history()
 
         # Initialisation des masques de couleurs (doit être fait avant toute détection)
         initialize_color_masks()
@@ -121,7 +131,7 @@ def initialize_system():
         video_capture = setup_video_capture(VIDEO_INPUT_PATH)
         
         # Chargement et pré-calcul du masque de détection
-        load_mask(DETECTION_MASK_PATH)
+        load_mask()
         print("Masque de détection chargé et pré-calculé")
 
         tracker_state = create_tracker()
@@ -130,13 +140,10 @@ def initialize_system():
         compute_device = setup_device()
         tracker_state['person_detection_model'] = tracker_state['person_detection_model'].to(compute_device)
 
-        # S'assurer que le chemin du cache est une chaîne de caractères
-        cache_file_path = str(CACHE_FILE_PATH)
-        
         _, initial_frame = video_capture.read()
         if initial_frame is not None:
             try:
-                get_average_colors(initial_frame, cache_file_path, True)
+                get_average_colors(initial_frame, True)
             except Exception as e:
                 print(f"Erreur lors de la détection des couleurs Macbeth: {e}")
         else:
@@ -182,9 +189,7 @@ def main():
             if not ret:
                 break
                 
-            # S'assurer que le chemin du cache est une chaîne de caractères
-            cache_file_path = str(CACHE_FILE_PATH)
-            processed_frame = process_frame(current_frame, cache_file_path, DETECT_SQUARES)
+            processed_frame = process_frame(current_frame, DETECT_SQUARES)
             tracked_persons = update_tracker(tracker_state, processed_frame)
             
             persons_to_process = []
@@ -196,28 +201,31 @@ def main():
                 if check_line_crossing(tracked_person, line_start, line_end):
                     persons_to_process.append(person_id)
             
-            for person_id in persons_to_process:
-                if person_id in tracker_state['active_tracked_persons']:
-                    print(f"!!! Ligne traversée par ID={person_id} !!!")
-                    current_elapsed_time = draw_timer(processed_frame)
-                    
-                    detected_value = get_dominant_detection(person_id)
-                    update_detection_value(person_id, detected_value)
-                    
-                    record_crossing(person_id, current_elapsed_time)
-                    dominant_value = get_dominant_detection(person_id)
-                    if dominant_value:
-                        tracker_state['line_crossing_counter'][dominant_value] += 1
-                    mark_person_as_crossed(tracker_state, person_id)
-                    print(f"Personne ID={person_id} marquée comme ayant traversé")
-            
             for tracked_person in tracked_persons:
                 draw_person(processed_frame, tracked_person)
             
             draw_crossing_line(processed_frame, line_start, line_end)
             draw_counters(processed_frame, tracker_state['line_crossing_counter'])
             
-            should_exit, _ = show_frame(processed_frame)
+            # Modification ici pour récupérer l'heure formatée
+            should_exit, _, formatted_time = show_frame(processed_frame)
+            
+            # Traitement des personnes qui ont traversé la ligne
+            for person_id in persons_to_process:
+                if person_id in tracker_state['active_tracked_persons']:
+                    print(f"!!! Ligne traversée par ID={person_id} !!!")
+                    
+                    detected_value = get_dominant_detection(person_id)
+                    update_detection_value(person_id, detected_value)
+                    
+                    # Utilisation de l'heure formatée pour l'enregistrement
+                    record_crossing(person_id, formatted_time)
+                    
+                    dominant_value = get_dominant_detection(person_id)
+                    if dominant_value:
+                        tracker_state['line_crossing_counter'][dominant_value] += 1
+                    mark_person_as_crossed(tracker_state, person_id)
+            
             if should_exit:
                 break
                 
@@ -232,4 +240,5 @@ def main():
 
 # Point d'entrée du programme
 if __name__ == "__main__":
+    #cProfile.run('main()')
     main()

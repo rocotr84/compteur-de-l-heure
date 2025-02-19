@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <WarningsAsErrors></WarningsAsErrors>
+    <NoWarn>NU1605</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Emgu.CV" Version="4.10.0.5680" />
+    <PackageReference Include="Emgu.CV.runtime.windows" Version="4.10.0.5680" />
+    <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
+    <PackageReference Include="MathNet.Numerics.MKL.Win-x64" Version="3.0.0" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.20.1" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime.Gpu" Version="1.17.1" />
+    <PackageReference Include="System.Drawing.Common" Version="7.0.0" />
+    <PackageReference Include="System.Runtime.Caching" Version="8.0.0" />
+    <PackageReference Include="YoloDotNet" Version="1.4.0" />
+    <PackageReference Include="CsvHelper" Version="30.0.1" />
+  </ItemGroup>
+</Project> 

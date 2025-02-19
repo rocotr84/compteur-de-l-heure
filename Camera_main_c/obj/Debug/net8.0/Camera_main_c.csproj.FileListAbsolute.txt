@@ -1,0 +1,6 @@
+D:\Windsuft programme\compteur-de-l-heure\Camera_main_c\obj\Debug\net8.0\Camera_main_c.csproj.AssemblyReference.cache
+D:\Windsuft programme\compteur-de-l-heure\Camera_main_c\obj\Debug\net8.0\Camera_main_c.GeneratedMSBuildEditorConfig.editorconfig
+D:\Windsuft programme\compteur-de-l-heure\Camera_main_c\obj\Debug\net8.0\Camera_main_c.AssemblyInfoInputs.cache
+D:\Windsuft programme\compteur-de-l-heure\Camera_main_c\obj\Debug\net8.0\Camera_main_c.AssemblyInfo.cs
+D:\Windsuft programme\compteur-de-l-heure\Camera_main_c\obj\Debug\net8.0\Camera_main_c.csproj.CoreCompileInputs.cache
+D:\Windsuft programme\compteur-de-l-heure\Camera_main_c\obj\Debug\net8.0\Camera_main_c.sourcelink.json

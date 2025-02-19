@@ -1,0 +1,108 @@
+{
+  "format": 1,
+  "restore": {
+    "D:\\Windsuft programme\\compteur-de-l-heure\\Camera_main_c\\Camera_main_c.csproj": {}
+  },
+  "projects": {
+    "D:\\Windsuft programme\\compteur-de-l-heure\\Camera_main_c\\Camera_main_c.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "D:\\Windsuft programme\\compteur-de-l-heure\\Camera_main_c\\Camera_main_c.csproj",
+        "projectName": "Camera_main_c",
+        "projectPath": "D:\\Windsuft programme\\compteur-de-l-heure\\Camera_main_c\\Camera_main_c.csproj",
+        "packagesPath": "C:\\Users\\victo\\.nuget\\packages\\",
+        "outputPath": "D:\\Windsuft programme\\compteur-de-l-heure\\Camera_main_c\\obj\\",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "C:\\Users\\victo\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "noWarn": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        }
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "dependencies": {
+            "CsvHelper": {
+              "target": "Package",
+              "version": "[30.0.1, )"
+            },
+            "Emgu.CV": {
+              "target": "Package",
+              "version": "[4.10.0.5680, )"
+            },
+            "Emgu.CV.runtime.windows": {
+              "target": "Package",
+              "version": "[4.10.0.5680, )"
+            },
+            "MathNet.Numerics": {
+              "target": "Package",
+              "version": "[5.0.0, )"
+            },
+            "MathNet.Numerics.MKL.Win-x64": {
+              "target": "Package",
+              "version": "[3.0.0, )"
+            },
+            "Microsoft.ML.OnnxRuntime": {
+              "target": "Package",
+              "version": "[1.20.1, )"
+            },
+            "Microsoft.ML.OnnxRuntime.Gpu": {
+              "target": "Package",
+              "version": "[1.17.1, )"
+            },
+            "System.Drawing.Common": {
+              "target": "Package",
+              "version": "[7.0.0, )"
+            },
+            "System.Runtime.Caching": {
+              "target": "Package",
+              "version": "[8.0.0, )"
+            },
+            "YoloDotNet": {
+              "target": "Package",
+              "version": "[1.4.0, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.406/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}

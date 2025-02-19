@@ -1,6 +1,7 @@
 # Packages de base
-numpy>=1.24.0
-opencv-python-headless>=4.8.0
+numpy>=1.20.0
+opencv-python-headless>=4.5.0
+opencv-contrib-python>=4.5.0
 Pillow>=9.5.0
 
 # Packages pour le deep learning et la détection
@@ -9,7 +10,7 @@ ultralytics>=8.0.0
 easyocr>=1.7.0
 
 # Packages pour le traitement scientifique
-scipy>=1.10.0
+scipy>=1.7.0
 matplotlib>=3.7.0
 
 # Packages utilitaires
@@ -25,3 +26,4 @@ kiwisolver>=1.4.4
 packaging>=23.0
 pyparsing>=3.0.9
 six>=1.16.0
+numba>=0.56.0

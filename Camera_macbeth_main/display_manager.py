@@ -2,10 +2,12 @@ import cv2
 import numpy as np
 import time
 from typing import Optional
-from config import (frame_delay, SHOW_TRAJECTORIES, SAVE_VIDEO, VIDEO_OUTPUT_PATH, 
-                   VIDEO_FPS, VIDEO_CODEC, output_width, output_height, DETECTION_MODE)
+from config import (SHOW_ROI_AND_COLOR, SHOW_TRAJECTORIES, 
+                   SHOW_CENTER, SHOW_LABELS, SAVE_VIDEO, VIDEO_OUTPUT_PATH, 
+                   VIDEO_FPS, VIDEO_CODEC, output_width, output_height, 
+                   DETECTION_MODE)
 from color_detector import get_dominant_color, visualize_color
-from number_detector import get_number, visualize_number
+#from number_detector import get_number, visualize_number
 
 # Variables globales pour la gestion de l'affichage
 display_window_name = "Tracking"
@@ -50,32 +52,31 @@ def draw_person(frame_display, tracked_person_data):
                  (person_bbox_x2, person_bbox_y2), 
                  (0, 255, 0), 2)
     
-    # Calcul de la zone de détection (30% à 70% en largeur, 20% à 40% en hauteur)
-    detection_zone_x1 = int(person_bbox_x1 + (person_bbox_x2 - person_bbox_x1) * 0.30)
-    detection_zone_x2 = int(person_bbox_x1 + (person_bbox_x2 - person_bbox_x1) * 0.70)
-    detection_zone_y1 = int(person_bbox_y1 + (person_bbox_y2 - person_bbox_y1) * 0.2)
-    detection_zone_y2 = int(person_bbox_y1 + (person_bbox_y2 - person_bbox_y1) * 0.4)
-    
-    # Vérification que la zone de détection est dans les limites de l'image
-    if (detection_zone_x1 >= 0 and detection_zone_y1 >= 0 and 
-        detection_zone_x2 <= frame_display.shape[1] and 
-        detection_zone_y2 <= frame_display.shape[0]):
+    # ROI et couleur conditionnels
+    if SHOW_ROI_AND_COLOR:
+        detection_zone_x1 = int(person_bbox_x1 + (person_bbox_x2 - person_bbox_x1) * 0.30)
+        detection_zone_x2 = int(person_bbox_x1 + (person_bbox_x2 - person_bbox_x1) * 0.70)
+        detection_zone_y1 = int(person_bbox_y1 + (person_bbox_y2 - person_bbox_y1) * 0.2)
+        detection_zone_y2 = int(person_bbox_y1 + (person_bbox_y2 - person_bbox_y1) * 0.4)
         
-        detection_zone_coords = (detection_zone_x1, detection_zone_y1, 
-                               detection_zone_x2, detection_zone_y2)
-        
-        if DETECTION_MODE == "color":
+        if (detection_zone_x1 >= 0 and detection_zone_y1 >= 0 and 
+            detection_zone_x2 <= frame_display.shape[1] and 
+            detection_zone_y2 <= frame_display.shape[0]):
+            
+            detection_zone_coords = (detection_zone_x1, detection_zone_y1, 
+                                   detection_zone_x2, detection_zone_y2)
+            
             detected_value = get_dominant_color(frame_display, detection_zone_coords)
             tracked_person_data['value'] = detected_value
             visualize_color(frame_display, detection_zone_coords, detected_value)
-        else:
-            detected_value = get_number(frame_display, detection_zone_coords)
-            tracked_person_data['value'] = detected_value
-            visualize_number(frame_display, detection_zone_coords, detected_value)
     
-    _draw_person_label(frame_display, tracked_person_data, person_bbox_x1, person_bbox_y1)
-    _draw_person_trajectory(frame_display, tracked_person_data)
-    _draw_person_center(frame_display, tracked_person_data)
+    # Éléments visuels optionnels
+    if SHOW_LABELS:
+        _draw_person_label(frame_display, tracked_person_data, person_bbox_x1, person_bbox_y1)
+    if SHOW_TRAJECTORIES:
+        _draw_person_trajectory(frame_display, tracked_person_data)
+    if SHOW_CENTER:
+        _draw_person_center(frame_display, tracked_person_data)
 
 def _draw_person_label(frame_display, tracked_person_data, label_pos_x, label_pos_y):
     """

@@ -1,20 +1,8 @@
 import cv2
 import numpy as np
 from color_weighting import get_weighted_color_probabilities, update_color_timestamp
-
-# Définition des plages de couleurs HSV pour chaque couleur reconnue
-# Format: ((hue_min, saturation_min, value_min), (hue_max, saturation_max, value_max))
-color_detection_ranges = {
-    "noir": ((0, 0, 0), (180, 255, 50)),
-    "blanc": ((0, 0, 200), (180, 30, 255)),
-    "rouge_fonce": ((0, 50, 50), (10, 255, 255)),
-    "bleu_fonce": ((100, 50, 50), (130, 255, 120)),
-    "bleu_clair": ((100, 50, 121), (130, 255, 255)),
-    "vert_fonce": ((35, 50, 50), (85, 255, 255)),
-    "rose": ((140, 50, 50), (170, 255, 255)),
-    "jaune": ((20, 100, 100), (40, 255, 255)),
-    "vert_clair": ((40, 50, 50), (80, 255, 255))
-}
+from video_processor import get_color_mask
+from config import COLOR_RANGES, COLOR_MASKS
 
 def get_dominant_color(frame_raw, detection_zone_coords):
     """
@@ -46,12 +34,16 @@ def get_dominant_color(frame_raw, detection_zone_coords):
         frame_detection_zone_hsv = cv2.cvtColor(frame_detection_zone, cv2.COLOR_BGR2HSV)
         
         detected_pixels_per_color = {}
-        for color_name, (range_min, range_max) in color_detection_ranges.items():
-            hsv_min_threshold = np.array(range_min, dtype=np.uint8)
-            hsv_max_threshold = np.array(range_max, dtype=np.uint8)
-            color_detection_mask = cv2.inRange(frame_detection_zone_hsv, 
-                                            hsv_min_threshold, 
-                                            hsv_max_threshold)
+        for color_name in COLOR_MASKS.keys():
+            hsv_min, hsv_max = get_color_mask(color_name)
+            color_detection_mask = cv2.inRange(frame_detection_zone_hsv, hsv_min, hsv_max)
+            
+            # Gestion spéciale pour le rouge (qui traverse 0° en HSV)
+            if color_name == 'rouge_fonce':
+                hsv_min2, hsv_max2 = get_color_mask('rouge2')
+                mask2 = cv2.inRange(frame_detection_zone_hsv, hsv_min2, hsv_max2)
+                color_detection_mask = cv2.bitwise_or(color_detection_mask, mask2)
+                
             detected_pixels_per_color[color_name] = cv2.countNonZero(color_detection_mask)
 
         weighted_color_probabilities = get_weighted_color_probabilities(detected_pixels_per_color)
@@ -103,4 +95,39 @@ def visualize_color(frame_raw, detection_zone_coords, detected_color_name):
                  (zone_x1, zone_y1), 
                  (zone_x2, zone_y2), 
                  rectangle_color, 
-                 2) 
+                 2)
+
+def detect_dominant_color(frame_roi):
+    """
+    Détecte la couleur dominante dans une région d'intérêt.
+    """
+    try:
+        hsv = cv2.cvtColor(frame_roi, cv2.COLOR_BGR2HSV)
+        total_pixels = frame_roi.shape[0] * frame_roi.shape[1]
+        detected_pixels = {}
+
+        for color_name in COLOR_RANGES.keys():
+            hsv_min, hsv_max = get_color_mask(color_name)
+            mask = cv2.inRange(hsv, hsv_min, hsv_max)
+
+            # Gestion spéciale pour le rouge (qui traverse 0° en HSV)
+            if color_name == 'rouge':
+                hsv_min2, hsv_max2 = get_color_mask('rouge2')
+                mask2 = cv2.inRange(hsv, hsv_min2, hsv_max2)
+                mask = cv2.bitwise_or(mask, mask2)
+
+            pixel_count = cv2.countNonZero(mask)
+            pixel_ratio = pixel_count / total_pixels
+            detected_pixels[color_name] = (pixel_ratio, pixel_count)
+
+        # Trouver la couleur dominante
+        dominant_color = max(detected_pixels.items(), 
+                           key=lambda x: x[1][0])
+
+        return (dominant_color[0],           # nom de la couleur
+               dominant_color[1][0],         # ratio de pixels
+               dominant_color[1][1])         # nombre de pixels
+
+    except Exception as e:
+        print(f"Erreur lors de la détection des couleurs: {str(e)}")
+        return None, 0, 0 

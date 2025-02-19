@@ -20,7 +20,7 @@ DETECTION_MODE = "color"  # "color" ou "number"
 detection_tracker = None
 
 # Configuration des paramètres globaux
-MAX_DISAPPEAR_FRAMES = 15    # Nombre de frames avant de considérer une personne disparue
+MAX_DISAPPEAR_FRAMES = 30    # Nombre de frames avant de considérer une personne disparue
 MAX_TRACKING_DISTANCE = 70   # Distance maximale pour suivre une même personne
 MIN_DETECTION_CONFIDENCE = 0.50  # Seuil de confiance pour valider une détection
 MIN_IOU_THRESHOLD = 0.3    # Seuil minimal de chevauchement entre détections
@@ -48,7 +48,10 @@ IOU_THRESHOLD = 0.5        # Seuil IOU pour ByteTrack
 bytetrack_path = "bytetrack.yaml"  # Chemin vers la config ByteTrack q
 
 # Options d'affichage
-SHOW_TRAJECTORIES = False  # Option pour activer/désactiver l'affichage des trajectoires
+SHOW_ROI_AND_COLOR = False    # Désactive l'affichage du ROI et de la couleur détectée
+SHOW_TRAJECTORIES = False     # Affichage des trajectoires (renommer pour cohérence)
+SHOW_CENTER = False           # Affichage du centre
+SHOW_LABELS = True           # Affichage des labels (ID, etc.)
 
 # Options d'enregistrement vidéo
 SAVE_VIDEO = True  # Option pour activer l'enregistrement au lieu de l'affichage
@@ -80,7 +83,7 @@ MORPHOLOGY_KERNEL_SIZE = (3, 3)
 ROI_EXPANSION_RATIO = 0.2
 
 # Paramètres d'optimisation de la correction des couleurs
-COLOR_CORRECTION_INTERVAL = 30  # Effectue la correction toutes les 30 frames
+COLOR_CORRECTION_INTERVAL = 60  # Effectue la correction toutes les 30 frames
 
 # Couleurs de référence de la charte Macbeth en BGR
 MACBETH_REFERENCE_COLORS = np.array([
@@ -90,4 +93,21 @@ MACBETH_REFERENCE_COLORS = np.array([
         [31, 199, 231], [149, 86, 187], [161, 133, 8], [242, 243, 243], [200, 200, 200],
         [160, 160, 160], [121, 122, 122], [85, 85, 85], [52, 52, 52]
     ], dtype=np.float32)
+
+# Configuration des plages de couleurs HSV
+COLOR_RANGES = {
+    'noir': ((0, 0, 0), (180, 255, 50)),
+    'blanc': ((0, 0, 200), (180, 30, 255)),
+    'rouge_fonce': ((0, 50, 50), (10, 255, 255)),
+    'rouge2': ((160, 50, 50), (180, 255, 255)),
+    'bleu_fonce': ((100, 50, 50), (130, 255, 120)),
+    'bleu_clair': ((100, 50, 121), (130, 255, 255)),
+    'vert_fonce': ((35, 50, 50), (85, 255, 255)),
+    'rose': ((140, 50, 50), (170, 255, 255)),
+    'jaune': ((20, 100, 100), (40, 255, 255)),
+    'vert_clair': ((40, 50, 50), (80, 255, 255))
+}
+
+# Variable globale pour stocker les masques pré-calculés
+COLOR_MASKS = {}
 

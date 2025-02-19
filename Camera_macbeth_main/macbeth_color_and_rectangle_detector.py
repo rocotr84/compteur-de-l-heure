@@ -91,13 +91,13 @@ def detect_macbeth_in_scene(frame_raw: np.ndarray, cache_file: str) -> tuple[np.
     (corner_top_left, corner_top_right, corner_bottom_right, corner_bottom_left) = corner_points_ordered
 
     # Calcul des dimensions de l'image redressée
-    width_bottom = np.linalg.norm(corner_bottom_right - corner_bottom_left)
-    width_top = np.linalg.norm(corner_top_right - corner_top_left)
-    target_width = int(max(width_bottom, width_top))
+    width_bottom = float(np.linalg.norm(corner_bottom_right - corner_bottom_left))
+    width_top = float(np.linalg.norm(corner_top_right - corner_top_left))
+    target_width = int(max(float(width_bottom), float(width_top)))
     
-    height_right = np.linalg.norm(corner_top_right - corner_bottom_right)
-    height_left = np.linalg.norm(corner_top_left - corner_bottom_left)
-    target_height = int(max(height_right, height_left))
+    height_right = float(np.linalg.norm(corner_top_right - corner_bottom_right))
+    height_left = float(np.linalg.norm(corner_top_left - corner_bottom_left))
+    target_height = int(max(float(height_right), float(height_left)))
 
     # Points de destination pour la transformation perspective
     perspective_points_dest = np.array([
@@ -105,9 +105,12 @@ def detect_macbeth_in_scene(frame_raw: np.ndarray, cache_file: str) -> tuple[np.
         [target_width - 1, 0],
         [target_width - 1, target_height - 1],
         [0, target_height - 1]
-    ], dtype="float32")
+    ], dtype=np.float32)
     
-    perspective_matrix = cv2.getPerspectiveTransform(corner_points_ordered, perspective_points_dest)
+    perspective_matrix = cv2.getPerspectiveTransform(
+        corner_points_ordered.astype(np.float32),
+        perspective_points_dest
+    )
     frame_warped = cv2.warpPerspective(frame_raw, perspective_matrix, (target_width, target_height))
 
     # Chemins des fichiers de sortie

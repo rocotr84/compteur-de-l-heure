@@ -14,7 +14,8 @@ from config import (
 from video_processor import (
     load_mask,
     setup_video_capture,
-    process_frame
+    process_frame,
+    initialize_color_masks
 ) 
 from display_manager import (
     init_display,
@@ -39,6 +40,7 @@ from detection_history import (
     record_crossing
 )
 from macbeth_color_and_rectangle_detector import get_average_colors
+import cProfile
 
 
 
@@ -102,33 +104,52 @@ def initialize_system():
     4. Initialise le tracker et l'affichage
     5. Configure le dispositif de calcul
     6. Effectue la détection initiale des couleurs Macbeth
-    
-    Returns:
-        tuple: (video_capture, detection_mask, tracker_state)
     """
-    # Initialisation du gestionnaire de signaux
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
+    try:
+        # Initialisation du gestionnaire de signaux
+        signal.signal(signal.SIGINT, signal_handler)
+        signal.signal(signal.SIGTERM, signal_handler)
 
-    init_detection_history(CSV_OUTPUT_PATH)
-    print(f"Démarrage du suivi en mode {DETECTION_MODE}...")
+        init_detection_history(CSV_OUTPUT_PATH)
+        print(f"Démarrage du suivi en mode {DETECTION_MODE}...")
 
-    detection_mask = load_mask(DETECTION_MASK_PATH)
-    video_capture = setup_video_capture(VIDEO_INPUT_PATH)
+        # Initialisation des masques de couleurs (doit être fait avant toute détection)
+        initialize_color_masks()
+        print("Masques de couleurs initialisés avec succès")
+        
+        # Configuration de la capture vidéo
+        video_capture = setup_video_capture(VIDEO_INPUT_PATH)
+        
+        # Chargement et pré-calcul du masque de détection
+        load_mask(DETECTION_MASK_PATH)
+        print("Masque de détection chargé et pré-calculé")
 
-    tracker_state = create_tracker()
-    init_display()  # Initialisation de l'affichage
+        tracker_state = create_tracker()
+        init_display()  # Initialisation de l'affichage
 
-    compute_device = setup_device()
-    tracker_state['person_detection_model'] = tracker_state['person_detection_model'].to(compute_device)
+        compute_device = setup_device()
+        tracker_state['person_detection_model'] = tracker_state['person_detection_model'].to(compute_device)
 
-    _, initial_frame = video_capture.read()
-    if initial_frame is not None:
-        get_average_colors(initial_frame, CACHE_FILE_PATH, True)
-    else:
-        print("Impossible de lire la première frame de la vidéo.")
+        # S'assurer que le chemin du cache est une chaîne de caractères
+        cache_file_path = str(CACHE_FILE_PATH)
+        
+        _, initial_frame = video_capture.read()
+        if initial_frame is not None:
+            try:
+                get_average_colors(initial_frame, cache_file_path, True)
+            except Exception as e:
+                print(f"Erreur lors de la détection des couleurs Macbeth: {e}")
+        else:
+            print("Impossible de lire la première frame de la vidéo.")
 
-    return video_capture, detection_mask, tracker_state
+        return {
+            'video_capture': video_capture,
+            'tracker_state': tracker_state
+        }
+        
+    except Exception as e:
+        print(f"Erreur lors de l'initialisation du système : {str(e)}")
+        sys.exit(1)
 
 def main():
     """
@@ -151,7 +172,9 @@ def main():
         Utilise un système de gestion d'erreurs pour assurer
         une fermeture propre en cas de problème.
     """
-    video_capture, detection_mask, tracker_state = initialize_system()
+    system_components = initialize_system()
+    video_capture = system_components['video_capture']
+    tracker_state = system_components['tracker_state']
 
     try:
         while True:
@@ -159,7 +182,9 @@ def main():
             if not ret:
                 break
                 
-            processed_frame = process_frame(current_frame, CACHE_FILE_PATH, DETECT_SQUARES)
+            # S'assurer que le chemin du cache est une chaîne de caractères
+            cache_file_path = str(CACHE_FILE_PATH)
+            processed_frame = process_frame(current_frame, cache_file_path, DETECT_SQUARES)
             tracked_persons = update_tracker(tracker_state, processed_frame)
             
             persons_to_process = []
@@ -207,4 +232,4 @@ def main():
 
 # Point d'entrée du programme
 if __name__ == "__main__":
-    main() 
+    main()

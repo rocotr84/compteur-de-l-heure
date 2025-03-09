@@ -7,8 +7,17 @@ from config.display_config import (
     SHOW_CENTER, SHOW_LABELS, SAVE_VIDEO, VIDEO_OUTPUT_PATH, 
     VIDEO_FPS, VIDEO_CODEC, output_width, output_height
 )
-from config.storage_config import VIDEO_OUTPUT_WRITER
+# Supprimez cette ligne si VIDEO_OUTPUT_WRITER est défini dans ce fichier
+# from config.storage_config import VIDEO_OUTPUT_WRITER
+
+# Si vous exécutez depuis la racine du projet, gardez cette ligne
 from src.color_detector import get_dominant_color, visualize_color
+
+# Si vous exécutez directement le fichier, utilisez plutôt:
+# import sys, os
+# sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# from src.color_detector import get_dominant_color, visualize_color
+
 from datetime import datetime
 
 # Variables globales pour la gestion de l'affichage

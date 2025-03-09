@@ -3,7 +3,8 @@ import numpy as np
 from src.macbeth_nonlinear_color_correction import corriger_image
 import os
 from config.display_config import (output_width, output_height, desired_fps) 
-from config.color_config import (COLOR_RANGES, COLOR_MASKS, DETECTION_MASK_PATH, CACHE_FILE_PATH)
+from config.color_config import (COLOR_RANGES, COLOR_MASKS)
+from config.paths_config import (DETECTION_MASK_PATH, CACHE_FILE_PATH)
 from numba import njit
 from functools import lru_cache
 

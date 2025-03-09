@@ -22,6 +22,9 @@ COLOR_MIN_PIXEL_RATIO = 0.15
 COLOR_MIN_PIXEL_COUNT = 100
 COLOR_HISTORY_SIZE = 2
 
+# Paramètres d'optimisation de la correction des couleurs
+COLOR_CORRECTION_INTERVAL = 300  # Effectue la correction toutes les 300 frames
+
 # Couleurs de référence de la charte Macbeth en BGR
 MACBETH_REFERENCE_COLORS = np.array([
     [68, 82, 115], [130, 150, 194], [157, 122, 98], [67, 108, 87], [177, 128, 133],

@@ -3,10 +3,10 @@ from collections import defaultdict
 from config.detection_config import (
     MAX_DISAPPEAR_FRAMES,
     MIN_CONFIDENCE,
-    IOU_THRESHOLD,
-    MODEL_PATH,
-    BYTETRACK_PATH
+    IOU_THRESHOLD
 )
+from config.paths_config import MODEL_PATH, BYTETRACK_PATH
+
 from ultralytics import YOLO
 
 def create_tracked_person(person_bbox_coords, person_id, person_confidence):

@@ -1,0 +1,355 @@
+
+
+@startuml t
+title Diagramme des fichiers Camera_macbeth_main
+
+package "Camera_macbeth_main" {
+    package "MacbethNonlinearColorCorrection" {
+        class modele_non_lineaire #87CEEB {
+            + params: Vecteur de 15 paramètres
+            + x: Matrice (n,3) des couleurs d'entrée en BGR
+            ---
+            + execute(): Matrice (n,3) des couleurs transformées en BGR
+        }
+
+        class calibrer_transformation_non_lineaire #87CEEB {
+            + measured: Couleurs mesurées (n,3) en BGR, normalisées [0,1]
+            + target: Couleurs cibles (n,3) en BGR, normalisées [0,1]
+            ---
+            + execute(): Vecteur des 15 paramètres optimaux
+        }
+
+        class appliquer_correction_non_lineaire #87CEEB {
+            + image: Image d'entrée en BGR (uint8)
+            + params: Vecteur des 15 paramètres de correction
+            ---
+            + execute(): Image corrigée en BGR (uint8)
+        }
+
+        class corriger_image #87CEEB {
+            + image: Image d'entrée en BGR
+            + cache_file: Chemin vers le fichier de cache des positions des carrés
+            + detect_squares: bool
+            + execute():  Image corrigée en BGR
+        }
+    }
+
+    package "MacbethColorAndRectangleDetector" {
+        class order_points #87CEEB {
+            + pts: Tableau (4,2) de points (x,y)
+            ---
+            + execute(): Points ordonnés [haut-gauche, haut-droit, bas-droit, bas-gauche]
+        }
+
+        class detect_macbeth_in_scene #87CEEB {
+            + image: Image source en BGR
+            + cache_file: Chemin pour sauvegarder les résultats
+            ---
+            + execute(): tuple (image_redressée, liste_des_carrés)
+        }
+
+        class get_average_colors #87CEEB {
+            + image: Image source en BGR
+            + cache_file: Chemin du fichier cache
+            + detect_squares: bool
+            ---
+            + execute(): Liste de 24 tuples (B,G,R) représentant les couleurs moyennes
+        }
+    }
+
+    package "VideoProcessor"  {
+            class init_video_processor #00ff00 {
+            + output_width : Largeur souhaitée pour les frames de sortie en pixels
+            +output_height : Hauteur souhaitée pour les frames de sortie en pixels
+            + desired_fps: Nombre d'images par seconde souhaité pour la sortie
+            ---
+            +execute(): void
+        }
+        
+        class load_mask #00ff00 {
+            + mask_path:  Chemin vers le fichier de masque (format image)
+            ---
+            + execute(): void
+        }
+
+        class setup_video_capture #00ff00 {
+            + video_path: Chemin vers le fichier vidéo
+            + execute(): cv2.VideoCapture, Objet de capture vidéo configuré
+        }
+
+        class process_frame #87CEEB {
+            + frame: Image à traiter (format BGR)
+            + cache_file: Chemin vers le fichier de cache pour la correction des couleurs
+            + detect_squares: bool
+            + execute(): Image traitée avec les couleurs corrigées et le masque appliqué
+        }
+    }
+
+    package "Main" {
+        class signal_handler #00ff00 {
+        + sig: Signal reçu
+        + frame:  Frame d'exécution courante
+        + execute(): arrêt propre du programme
+    }
+
+    class setup_device #00ff00 {
+        + execute():  torch.device: Dispositif de calcul configuré (GPU ou CPU)
+    }
+    
+    class initialize #00ff00 {
+        + execute(): Système initialisé
+    }
+
+    class main {
+        + execute(): void
+    }
+  }
+  
+  package "Tracker" {
+    class create_tracked_person #ff0000 {
+        + bbox: Coordonnées de la boîte englobante (x1, y1, x2, y2)
+        + id: Identifiant unique de la personne
+        + confidence: Score de confiance de la détection
+        + execute(): Dictionnaire contenant les informations de suivi de la personne
+    }
+
+    class get_center #ff0000 {
+        + bbox: Coordonnées de la boîte englobante (x1, y1, x2, y2)
+        + execute(): Coordonnées (x, y) du point central bas
+    }
+
+    class update_person_position #ff0000 {
+        + person: Dictionnaire de la personne à mettre à jour
+        + bbox: Nouvelles coordonnées de la boîte englobante
+        + execute(): void
+    }
+
+    class check_line_crossing #ff0000 {
+        + person: Dictionnaire de la personne à vérifier
+        + line_start: Point de départ de la ligne (x, y)
+        + line_end: Point d'arrivée de la ligne (x, y)
+        ---
+        + execute(): True si la personne traverse la ligne, False sinon
+    }
+
+    class create_tracker #00ff00 {
+        + execute(): État initial du tracker avec modèle YOLO chargé
+    }
+
+    class update_tracker #ff0000 {
+        + tracker_state: État actuel du tracker
+        + frame: Image à analyser
+        + execute(): Liste des personnes actuellement suivies
+    }
+
+    class mark_as_crossed #ff0000 {
+        + tracker_state: État du tracker
+        + person_id: Identifiant de la personne
+        + execute(): void
+    }
+  }
+package "ColorDetector" {
+    class get_dominant_color #e67e22 {
+        + frame: Image complète au format BGR
+        + roi_coords: Coordonnées de la ROI sous forme (x1, y1, x2, y2)
+        ---
+        + execute(): Nom de la couleur dominante 
+    }
+
+    class visualize_color #e67e22 {
+        + frame: Image sur laquelle dessiner (format BGR)
+        + roi_coords: Coordonnées de la ROI sous forme (x1, y1, x2, y2)
+        + color_name: Nom de la couleur détectée
+        + execute(): void
+    }
+}
+
+  package "ColorWeighting" {
+    class get_color_weight #e67e22 {
+        + color: Identifiant de la couleur
+        + current_time: Timestamp actuel en secondes
+        + execute(): Poids entre MIN_COLOR_WEIGHT et 1.0
+    }
+
+    class update_color_timestamp #e67e22 {
+        + color: Identifiant de la couleur à mettre à jour
+        + timestamp: imestamp spécifique.
+        ---
+        + execute(): void
+    }
+
+    class get_weighted_color_probabilities #e67e22 {
+        + color_counts: Dictionnaire {couleur: nombre_de_pixels}
+        + current_time: Timestamp pour le calcul
+        ---
+        + execute(): Dictionnaire {couleur: compte_pondéré} avec les comptages ajustés
+              selon la pondération temporelle
+    }
+  }
+
+package "NumberDetector" {
+    class preprocess_roi {
+        + roi: np.array
+        + execute(): np.array
+    }
+
+    class get_number {
+        + frame: np.array
+        + roi_coords: tuple
+        + execute(): str
+    }
+
+    class visualize_number {
+        + frame: np.array
+        + roi_coords: tuple
+        + number: str
+        + execute(): void
+    }
+  }
+  package "DisplayManager" {
+    class init_display #00ff00 {
+        + execute(): Initialise le gestionnaire d'affichage
+    }
+
+    class draw_person #9b59b6 {
+        + frame: Image sur laquelle dessiner (format BGR)
+        + person: Dictionnaire contenant les informations de la personne
+        + execute(): Dessine les éléments visuels pour une personne détectée
+    }
+
+    class _draw_person_label #9b59b6 {
+        + frame: Image sur laquelle dessiner (format BGR)
+        + person: Informations de la personne
+        + x1: Coordonnée X du coin supérieur gauche
+        + y1: Coordonnée Y du coin supérieur gauche
+        + execute():  Dessine l'étiquette d'identification de la personne
+    }
+
+    class _draw_person_trajectory #9b59b6 {
+        + frame: Image sur laquelle dessiner (format BGR)
+        + person: Informations de la personne incluant sa trajectoire
+        + execute(): Dessine la trajectoire de déplacement de la personne
+    }
+
+    class _draw_person_center #9b59b6 {
+        + frame: Image sur laquelle afficher les compteurs (format BGR)
+        + person: Informations de la personne
+        ---
+        + execute(): Dessine le point central de la personne
+    }
+
+    class draw_counters #9b59b6  {
+        + frame: Image sur laquelle afficher les compteurs (format BGR)
+        + counter: Dictionnaire {valeur: nombre} des compteurs
+        + execute(): Affiche les compteurs pour chaque valeur détectée
+    }
+
+    class draw_crossing_line #9b59b6 {
+        + frame: Image sur laquelle afficher les compteurs (format BGR)
+        + start_point: Point de début (x, y) de la ligne
+        + end_point: Point de fin (x, y) de la ligne
+        + execute(): Dessine la ligne de comptage sur l'image
+    }
+
+    class draw_timer #9b59b6 {
+        + frame: Image sur laquelle afficher le timer  (format BGR)
+        + execute():  Temps écoulé en secondes depuis le début
+    }
+
+    class show_frame #9b59b6 {
+        + frame: Image à afficher/enregistrer
+        ---
+        + execute(): tuple[bool, float]
+    }
+
+    class release {
+        + execute(): ibère les ressources utilisées par l'affichage.
+    }
+  }
+  
+  package "DetectionHistory" #00ff00 {
+    class init_detection_history {
+        + output_file: Chemin vers le fichier CSV de sortie
+        + execute(): Initialise l'historique des détections et crée/ouvre le fichier CSV de sortie
+    }
+
+    class update_color {
+        + person_id: Identifiant unique du coureur
+        + value: Valeur de couleur détectée
+        + execute(): Met à jour l'historique des valeurs détectées pour un coureur
+    }
+
+    class get_dominant_value {
+        + person_id:  Identifiant unique du coureur
+        + execute(): Détermine la valeur la plus fréquente pour un coureur donné
+    }
+
+    class record_crossing {
+        + person_id: Identifiant unique du coureur
+        + elapsed_time: Temps écoulé depuis le début en secondes
+        + execute(): Enregistre le passage d'un coureur avec sa couleur dominante et le temps écoulé
+    }
+
+    class cleanup {
+        + execute():  Ferme proprement le fichier CSV.
+    }
+}
+}
+
+
+' Création des liens entre les fichiers
+
+initialize --> signal_handler
+initialize --> init_detection_history
+initialize --> init_video_processor
+initialize --> load_mask : Initialisation
+initialize --> setup_video_capture : Initialisation
+initialize --> create_tracker : Initialisation
+initialize --> init_display : Initialisation
+initialize --> setup_device : Initialisation
+initialize--> get_average_colors
+main --> initialize
+main --> process_frame
+main --> update_tracker
+main --> update_color
+main --> check_line_crossing
+main --> draw_timer
+main --> get_dominant_value
+main --> record_crossing
+main --> mark_as_crossed
+main --> draw_person
+main --> draw_crossing_line
+main --> draw_counters
+main --> show_frame
+main --> cleanup
+main --> release
+
+signal_handler --> cleanup
+process_frame -->  corriger_image
+corriger_image --> get_average_colors
+corriger_image --> calibrer_transformation_non_lineaire
+corriger_image --> appliquer_correction_non_lineaire
+calibrer_transformation_non_lineaire --> modele_non_lineaire
+appliquer_correction_non_lineaire --> modele_non_lineaire
+get_average_colors --> detect_macbeth_in_scene
+detect_macbeth_in_scene --> order_points
+record_crossing --> get_dominant_value
+
+update_tracker --> create_tracked_person
+update_tracker --> update_person_position
+update_person_position --> get_center
+draw_person --> get_dominant_color
+draw_person --> get_number
+draw_person --> visualize_color
+draw_person --> visualize_number
+draw_person --> _draw_person_label
+draw_person --> _draw_person_trajectory
+draw_person --> _draw_person_center
+visualize_number -->preprocess_roi
+get_weighted_color_probabilities --> get_color_weight
+get_dominant_color --> get_weighted_color_probabilities
+get_dominant_color --> update_color_timestamp
+
+@enduml
+
+

@@ -1,0 +1,17 @@
+# Ultralytics YOLO 🚀, AGPL-3.0 license
+# BoT-SORT tracker configuration for Ultralytics YOLO
+
+tracker_type: botsort # tracker type, ['botsort', 'bytetrack']
+track_high_thresh: 0.3 # threshold for first association
+track_low_thresh: 0.1 # threshold for second association
+new_track_thresh: 0.4 # threshold for initializing a new track
+track_buffer: 30 # frames for keeping tracks alive
+match_thresh: 0.7 # threshold for matching tracks
+appearance_thresh: 0.25 # threshold for appearance feature matching
+proximity_thresh: 0.5 # threshold for proximity matching
+with_reid: True # whether to use ReID features
+gmc_method: sparseOptFlow # camera motion compensation method, ['none', 'sparseOptFlow', 'homography']
+frame_rate: 30 # frame rate of the video
+lambda_: 0.995 # coefficient for balancing motion and appearance similarity
+conf_thres: 0.5 # confidence threshold for detection
+fuse_score: True # whether to fuse detection and tracking scores

@@ -5,7 +5,7 @@ from config.detection_config import (
     MIN_CONFIDENCE,
     IOU_THRESHOLD
 )
-from config.paths_config import MODEL_PATH, BYTETRACK_PATH
+from config.paths_config import MODEL_PATH, BYTETRACK_PATH, BOTSORT_PATH
 
 from ultralytics import YOLO
 
@@ -153,7 +153,8 @@ def update_tracker(tracker_state, frame_raw):
     detection_results = tracker_state['person_detection_model'].track(
         source=frame_raw,
         persist=True,
-        tracker=BYTETRACK_PATH,
+        #tracker=BYTETRACK_PATH,
+        tracker=BOTSORT_PATH,
         classes=0,
         conf=MIN_CONFIDENCE,
         iou=IOU_THRESHOLD,

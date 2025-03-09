@@ -24,6 +24,7 @@ VIDEO_INPUT_PATH = os.path.join(ASSETS_DIR, "video", "p3_macbeth.mp4")
 MODEL_PATH = os.path.join(ASSETS_DIR, "models", "yolo11n.pt")
 DETECTION_MASK_PATH = os.path.join(ASSETS_DIR, "mask", "p3_macbeth_mask.jpg")
 BYTETRACK_PATH = os.path.join(ASSETS_DIR, "models", "bytetrack.yaml")
+BOTSORT_PATH = os.path.join(ASSETS_DIR, "models", "botsort.yaml")
 
 # Chemins des fichiers de sortie
 CSV_OUTPUT_PATH = os.path.join(OUTPUT_DIR, "detections.csv")

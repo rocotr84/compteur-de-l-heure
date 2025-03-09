@@ -3,7 +3,8 @@ from collections import defaultdict
 from datetime import datetime
 import os
 import sqlite3
-from config import SAVE_SQL, CSV_OUTPUT_PATH, SQL_DB_PATH
+from config.storage_config import SAVE_SQL
+from config.paths_config import CSV_OUTPUT_PATH, SQL_DB_PATH
 # Variables globales pour la gestion de l'historique des détections
 person_detection_history = defaultdict(list)  # {person_id: [liste des valeurs détectées]}
 csv_output_file = None

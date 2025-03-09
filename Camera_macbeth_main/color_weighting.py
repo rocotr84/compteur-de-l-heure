@@ -1,6 +1,6 @@
 import time
 from collections import defaultdict
-from config import (
+from config.color_config import (
     MIN_TIME_BETWEEN_PASSES,
     MIN_COLOR_WEIGHT,
 )

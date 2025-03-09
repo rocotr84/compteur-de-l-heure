@@ -149,12 +149,6 @@ def update_tracker(tracker_state, frame_raw):
     
     Returns:
         list: Liste des personnes actuellement suivies
-    
-    Notes:
-        - Utilise ByteTrack pour le suivi
-        - Supprime les personnes après MAX_DISAPPEAR_FRAMES frames sans détection
-        - Maintient la correspondance entre IDs ByteTrack et IDs internes
-        - Ignore les personnes ayant déjà traversé la ligne
     """
     detection_results = tracker_state['person_detection_model'].track(
         source=frame_raw,
@@ -168,35 +162,45 @@ def update_tracker(tracker_state, frame_raw):
 
     if detection_results and len(detection_results) > 0 and detection_results[0].boxes.id is not None:
         detected_bboxes = detection_results[0].boxes.xyxy.cpu().numpy()
-        detected_bytetrack_ids = detection_results[0].boxes.id.cpu().numpy()
+        detected_bytetrack_ids = detection_results[0].boxes.id.cpu().numpy().astype(int)
         
+        # Approche vectorisée pour le traitement des détections
         active_person_ids = set()
         
-        for person_bbox, bytetrack_person_id in zip(detected_bboxes, detected_bytetrack_ids):
-            bytetrack_person_id = int(bytetrack_person_id)
+        # Créer un masque pour les IDs qui ne sont pas encore dans le mapping
+        new_ids_mask = np.array([bid not in tracker_state['bytetrack_to_internal_ids'] for bid in detected_bytetrack_ids])
+        new_bytetrack_ids = detected_bytetrack_ids[new_ids_mask]
+        
+        # Attribuer de nouveaux IDs internes en bloc
+        for bytetrack_id in new_bytetrack_ids:
+            tracker_state['bytetrack_to_internal_ids'][bytetrack_id] = tracker_state['next_person_id']
+            tracker_state['next_person_id'] += 1
+        
+        # Convertir tous les IDs ByteTrack en IDs internes
+        internal_ids = np.array([tracker_state['bytetrack_to_internal_ids'][bid] for bid in detected_bytetrack_ids])
+        
+        # Filtrer les personnes qui ont déjà traversé la ligne
+        valid_mask = np.array([iid not in tracker_state['persons_crossed_line'] for iid in internal_ids])
+        valid_internal_ids = internal_ids[valid_mask]
+        valid_bboxes = detected_bboxes[valid_mask]
+        
+        # Mettre à jour les personnes existantes et créer les nouvelles
+        for internal_id, bbox in zip(valid_internal_ids, valid_bboxes):
+            active_person_ids.add(internal_id)
             
-            if bytetrack_person_id not in tracker_state['bytetrack_to_internal_ids']:
-                tracker_state['bytetrack_to_internal_ids'][bytetrack_person_id] = tracker_state['next_person_id']
-                tracker_state['next_person_id'] += 1
-            
-            internal_person_id = tracker_state['bytetrack_to_internal_ids'][bytetrack_person_id]
-            
-            if internal_person_id in tracker_state['persons_crossed_line']:
-                continue
-                
-            active_person_ids.add(internal_person_id)
-            
-            if internal_person_id not in tracker_state['active_tracked_persons']:
-                tracker_state['active_tracked_persons'][internal_person_id] = create_tracked_person(person_bbox, internal_person_id, 1.0)
+            if internal_id not in tracker_state['active_tracked_persons']:
+                tracker_state['active_tracked_persons'][internal_id] = create_tracked_person(bbox, internal_id, 1.0)
             else:
-                update_person_position(tracker_state['active_tracked_persons'][internal_person_id], person_bbox)
-                tracker_state['active_tracked_persons'][internal_person_id]['frames_disappeared'] = 0
+                update_person_position(tracker_state['active_tracked_persons'][internal_id], bbox)
+                tracker_state['active_tracked_persons'][internal_id]['frames_disappeared'] = 0
 
-        for tracked_person_id in list(tracker_state['active_tracked_persons'].keys()):
-            if tracked_person_id not in active_person_ids:
-                tracker_state['active_tracked_persons'][tracked_person_id]['frames_disappeared'] += 1
-                if tracker_state['active_tracked_persons'][tracked_person_id]['frames_disappeared'] > MAX_DISAPPEAR_FRAMES:
-                    del tracker_state['active_tracked_persons'][tracked_person_id]
+        # Traitement des personnes disparues en une seule opération
+        disappeared_ids = [pid for pid in tracker_state['active_tracked_persons'] if pid not in active_person_ids]
+        
+        for disappeared_id in disappeared_ids:
+            tracker_state['active_tracked_persons'][disappeared_id]['frames_disappeared'] += 1
+            if tracker_state['active_tracked_persons'][disappeared_id]['frames_disappeared'] > MAX_DISAPPEAR_FRAMES:
+                del tracker_state['active_tracked_persons'][disappeared_id]
 
     return list(tracker_state['active_tracked_persons'].values())
 

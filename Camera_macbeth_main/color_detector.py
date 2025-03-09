@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 from color_weighting import get_weighted_color_probabilities, update_color_timestamp
 from video_processor import get_color_mask
-from config import COLOR_RANGES, COLOR_MASKS
+from config.color_config import COLOR_RANGES, COLOR_MASKS
 
 def get_dominant_color(frame_raw, detection_zone_coords):
     """
@@ -11,7 +11,7 @@ def get_dominant_color(frame_raw, detection_zone_coords):
     Le processus comprend :
     1. Extraction de la zone de détection
     2. Conversion en espace colorimétrique HSV
-    3. Détection des pixels dans chaque plage de couleur
+    3. Détection vectorisée des pixels dans chaque plage de couleur
     4. Application des pondérations pour déterminer la couleur dominante
     
     Args:
@@ -33,27 +33,33 @@ def get_dominant_color(frame_raw, detection_zone_coords):
 
         frame_detection_zone_hsv = cv2.cvtColor(frame_detection_zone, cv2.COLOR_BGR2HSV)
         
+        # Approche vectorisée pour la détection des couleurs
         detected_pixels_per_color = {}
-        for color_name in COLOR_MASKS.keys():
+        
+        # Préparation des masques en une seule opération
+        color_names = list(COLOR_MASKS.keys())
+        
+        for color_name in color_names:
             hsv_min, hsv_max = get_color_mask(color_name)
-            color_detection_mask = cv2.inRange(frame_detection_zone_hsv, hsv_min, hsv_max)
+            mask = cv2.inRange(frame_detection_zone_hsv, hsv_min, hsv_max)
             
             # Gestion spéciale pour le rouge (qui traverse 0° en HSV)
             if color_name == 'rouge_fonce':
                 hsv_min2, hsv_max2 = get_color_mask('rouge2')
                 mask2 = cv2.inRange(frame_detection_zone_hsv, hsv_min2, hsv_max2)
-                color_detection_mask = cv2.bitwise_or(color_detection_mask, mask2)
-                
-            detected_pixels_per_color[color_name] = cv2.countNonZero(color_detection_mask)
+                mask = cv2.bitwise_or(mask, mask2)
+            
+            detected_pixels_per_color[color_name] = cv2.countNonZero(mask)
 
         weighted_color_probabilities = get_weighted_color_probabilities(detected_pixels_per_color)
         
-        dominant_color_name, dominant_color_weight = max(weighted_color_probabilities.items(), 
-                                                       key=lambda x: x[1])
-        
-        if dominant_color_weight > 0:
-            update_color_timestamp(dominant_color_name)
-            return dominant_color_name
+        # Utilisation de max() avec une fonction lambda pour trouver la couleur dominante
+        if weighted_color_probabilities:
+            max_item = max(weighted_color_probabilities.items(), key=lambda x: x[1], default=(None, 0))
+            if max_item[0] is not None and max_item[1] > 0:
+                dominant_color_name = max_item[0]
+                update_color_timestamp(dominant_color_name)
+                return dominant_color_name
             
         return "inconnu"
 

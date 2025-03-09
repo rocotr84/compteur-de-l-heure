@@ -17,7 +17,7 @@ import numpy as np
 from scipy.optimize import least_squares
 from numba import njit, prange
 from macbeth_color_and_rectangle_detector import get_average_colors
-from config import COLOR_CORRECTION_INTERVAL, MACBETH_REFERENCE_COLORS
+from config.color_config import COLOR_CORRECTION_INTERVAL, MACBETH_REFERENCE_COLORS
 # Variables globales pour la mise en cache des coefficients
 last_correction_params = None
 frame_count = 0

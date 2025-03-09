@@ -14,7 +14,7 @@ import cv2
 import numpy as np
 import json
 import os
-from config import CACHE_FILE_PATH
+from config.paths_config import CACHE_FILE_PATH
 
 def order_points(pts: np.ndarray) -> np.ndarray:
     """

@@ -2,9 +2,12 @@ import cv2
 import numpy as np
 import time
 from typing import Optional
-from config import (SHOW_ROI_AND_COLOR, SHOW_TRAJECTORIES, 
-                   SHOW_CENTER, SHOW_LABELS, SAVE_VIDEO, VIDEO_OUTPUT_PATH, 
-                   VIDEO_FPS, VIDEO_CODEC, output_width, output_height)
+from config.display_config import (
+    SHOW_ROI_AND_COLOR, SHOW_TRAJECTORIES, 
+    SHOW_CENTER, SHOW_LABELS, SAVE_VIDEO, VIDEO_OUTPUT_PATH, 
+    VIDEO_FPS, VIDEO_CODEC, output_width, output_height
+)
+from config import VIDEO_OUTPUT_WRITER
 from color_detector import get_dominant_color, visualize_color
 from datetime import datetime
 
@@ -133,19 +136,25 @@ def _draw_person_trajectory(frame_display, tracked_person_data):
     """
     Dessine la trajectoire de déplacement de la personne.
     
-    Trace des lignes entre les positions successives si SHOW_TRAJECTORIES est activé.
+    Utilise cv2.polylines pour dessiner toute la trajectoire en une seule opération,
+    ce qui est beaucoup plus efficace que de dessiner chaque segment individuellement.
     
     Args:
         frame (np.array): Image sur laquelle dessiner
         person (dict): Informations de la personne incluant sa trajectoire
     """
     if SHOW_TRAJECTORIES and 'trajectory' in tracked_person_data and len(tracked_person_data['trajectory']) > 1:
-        trajectory_points = tracked_person_data['trajectory']
-        for i in range(len(trajectory_points)-1):
-            cv2.line(frame_display, 
-                    trajectory_points[i],
-                    trajectory_points[i+1],
-                    (0, 0, 255), 2)
+        # Convertir la liste de points en tableau numpy pour cv2.polylines
+        trajectory_points = np.array(tracked_person_data['trajectory'], dtype=np.int32)
+        
+        # Dessiner toute la trajectoire en une seule opération
+        cv2.polylines(
+            frame_display,
+            [trajectory_points],  # Liste de tableaux de points (un seul tableau ici)
+            False,               # Ne pas fermer la courbe
+            (0, 0, 255),         # Couleur BGR (rouge)
+            2                    # Épaisseur de ligne
+        )
 
 def _draw_person_center(frame_display, tracked_person_data):
     """

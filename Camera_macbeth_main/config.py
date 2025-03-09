@@ -46,7 +46,7 @@ SHOW_CENTER = False           # Affichage du centre
 SHOW_LABELS = True           # Affichage des labels (ID, etc.)
 
 # Options d'enregistrement vidéo
-SAVE_VIDEO = True  # Option pour activer l'enregistrement au lieu de l'affichage
+SAVE_VIDEO = False  # Option pour activer l'enregistrement au lieu de l'affichage
 VIDEO_OUTPUT_PATH = "output.mp4"  # Chemin du fichier de sortie
 VIDEO_FPS = 30  # FPS pour la vidéo de sortie
 VIDEO_CODEC = 'mp4v'  # Codec vidéo (peut aussi être 'XVID' pour .avi)
